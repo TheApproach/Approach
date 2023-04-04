@@ -5,6 +5,7 @@ use \Approach\Render\Node\Keyed;
 
 class temporary_alias_until_stream extends Keyed{}
 class Token extends temporary_alias_until_stream{
+	public $name;
 	public function RenderCorpus()
 	{
 		$this->content = '';
