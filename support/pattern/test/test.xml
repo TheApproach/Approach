@@ -1,0 +1,28 @@
+<Imprint xmlns:Component="Component://approach.local" xmlns:Imprint="Render://approach.local" xmlns:Render="Render://approach.local">
+	<Imprint:Pattern name="display" type="HTML">
+		<html class="test" data-check="nacho [@ b @] mama" Imprint:bind="document">
+			<head Imprint:bind="head">
+				<title Imprint:bind="title">Test File</title>
+			</head>
+			<body>
+				<ul class="Screen" Imprint:bind="Screen">
+					<li id="Header" class="Stage" Imprint:bind="Header"></li>
+					<li id="Main" class="Stage" Imprint:bind="Main" color="blue" flavor="orange">
+						<div>content [@ A @] here</div>
+						<div>content [@ B @] here</div>
+						<div>content [@ C @] here</div>
+						<div>content [@ D @] here</div>
+					</li>
+					<li id="Footer" class="Stage [@ B @]" Imprint:bind="Footer">
+						(C) 2022 Your Company Name Here
+					</li>
+				</ul>
+				<ul class="OffScreen" Imprint:bind="OffscreenRendering">
+					<li id="Props" class="Stage" Imprint:bind="PropContainer">
+						.............
+					</li>
+				</ul>
+			</body>
+		</html>
+	</Imprint:Pattern>
+</Imprint>

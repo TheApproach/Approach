@@ -1,0 +1,6 @@
+/old/
+.DS_Store
+.idea
+.idea/
+/vendor/
+.vscode/settings.json

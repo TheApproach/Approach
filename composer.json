@@ -1,0 +1,34 @@
+{
+    "name": "approach/approach",
+    "description": "TODO: make a better description",
+    "type": "approach",
+    "require": {
+        "composer/installers": "~1.0"
+    },
+    "require-dev": {
+        "codeception/codeception": "^5.0",
+        "codeception/module-phpbrowser": "*",
+        "codeception/module-asserts": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Approach\\": "approach",
+            "Approach\\Render\\": "approach/Render"
+        }
+    },
+    "authors": [
+        {
+            "name": "Garet Claborn",
+            "email": "garet@suiteux.com"
+        },
+        {
+            "name": "Tom Samwel",
+            "email": "tom@suiteux.com"
+        }
+    ],
+    "config": {
+        "allow-plugins": {
+            "composer/installers": true
+        }
+    }
+}

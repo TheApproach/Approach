@@ -1,0 +1,23 @@
+<Imprint xmlns:Component="Component://approach.local" xmlns:Imprint="Render://approach.local" xmlns:Render="Render://approach.local">
+<html>
+<head><title>Test File</title></head>
+<body>
+	<ul class="Screen">
+		<li id="Header" class="Stage">
+		
+		</li>
+		<li id="Main" class="Stage">
+			<div>[@ token1 @]</div>
+		</li>
+		<li id="Footer" class="[@ token2 @]">
+
+		</li>
+	</ul>
+	<ul class="OffScreen">
+		<li id="Props" class="Stage">
+			.............
+		</li>
+	</ul>
+</body>
+</html>
+</Imprint>
