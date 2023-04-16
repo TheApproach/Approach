@@ -18,7 +18,7 @@ Add the following to your **composer.json**
 "repositories": [
     {
         "type": "vcs",
-        "url": "http://git.suitespace.corp/Approach/Approach"
+        "url": "https://github.com/TheApproach/Approach"
     }
 ],
 "config": {
