@@ -20,28 +20,32 @@ class Keyed extends Node implements \ArrayAccess
     public function __construct(
         public null|string|Stringable|Stream|self $name =  null,
         public null|string|Stringable|Stream|self $content = null
-    ) {
+    )
+    {
         $this->_keys[(string)$name] = $this;
     }
 
     public static function fromArray(array $dictionary)
     {
         $a = new static();
-		if(\Approach\Approach::isArrayAssociative($dictionary))
-			foreach ($dictionary as $k => $v) {
-				$a[(string)$k] = $v;
-			}
-		else
-			foreach ($dictionary as $v) {
-				$a[] = $v;
-			}
+        if (\Approach\Approach::isArrayAssociative($dictionary))
+            foreach ($dictionary as $k => $v)
+            {
+                $a[(string)$k] = $v;
+            }
+        else
+            foreach ($dictionary as $v)
+            {
+                $a[] = $v;
+            }
         return $a;
     }
 
     public function &toArray(): array
     {
         $a = [];
-        foreach ($this->nodes as $node) {
+        foreach ($this->nodes as $node)
+        {
             $a = array_merge($a, $node->toArray());
         }
         if ($this->name !== null)
@@ -52,9 +56,10 @@ class Keyed extends Node implements \ArrayAccess
 
     public function RenderHead(): Traversable
     {
-		if($this->name === null && $this->content === null)
+		if ($this->name === null)
 			yield '';
-		else yield self::$segmentation_phrase;
+		
+        else yield self::$segmentation_phrase;
     }
 
     /**
@@ -64,9 +69,11 @@ class Keyed extends Node implements \ArrayAccess
      */
     public function RenderCorpus(): Traversable
     {
-        if ($this->name !== null) {
+        if ($this->name !== null)
+        {
             yield (string)$this->name;
-            if ($this->content !== null) {
+            if ($this->content !== null)
+            {
                 yield
                     self::$associative_phrase .
                     self::$encapsulating_phrase .
@@ -74,12 +81,20 @@ class Keyed extends Node implements \ArrayAccess
                     self::$encapsulating_phrase;
             }
         }
+		
+		// If the attribute is nameless, but has content, then it is a keyless attribute (may be chained by pushback to nodes)
+        else if ($this->content !== null)
+        {
+            yield $this->content;
+        }
+
         yield '';
     }
 
     public function RenderTail(): Traversable
     {
-        foreach ($this->nodes as $node) {
+        foreach ($this->nodes as $node)
+        {
             yield
                 $this->name !== null ?
                 self::$chaining_phrase

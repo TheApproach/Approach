@@ -24,23 +24,16 @@ use \Approach\Resource\Aspect\field;
 
 use \Approach\Render\Stream;
 use \Approach\Render\Node as RenderNode;
+use Approach\Service\connectable;
 use \Approach\Service\Service;
+use \Approach\Service\flow;
+use \Approach\Service\format;
+use \Approach\Service\target;
+use Stringable;
 
 class Cache extends RenderNode\Keyed{}
 
 abstract class accessor{}
-
-interface accessible
-{
-    public function access(accessor $by);
-}
-
-trait accessibility{
-    public function access(accessor $by){
-        $results=[];
-        return $results;
-    }
-}
 
 
 const sort		= 0;
@@ -57,10 +50,8 @@ const quality	= 3;
 const quantity	= 4;
 const mode		= 5;
 
-class Resource extends RenderNode implements accessible, Stream
+class Resource extends RenderNode implements Stream
 {
-    use accessibility;
-
 	protected Aspect $__selection;
 
 	/**
@@ -83,76 +74,40 @@ class Resource extends RenderNode implements accessible, Stream
 	 * - Generic Approach Services
 	 * 
 	 */
-	public static array $source=[];
-    
+
 	public function __construct(
-		public $proto='approach:/',							// The protocol, eg http:, by default approach:/ signifies a resource in the active project
-		public $host='',									// The host server, eg localhost, by default the active Scope represents the host
+		// public $host='',									// The host server, eg localhost, by default the active Scope represents the host
 		public $where='/', 									// The path to the resource, eg /path/to/resource, by default loads the root of the host
-		Aspect $pick = new Aspect(aspects::field, null),	// Constraints on the resource selection
-		Aspect $sort = new Aspect(aspects::field, null),	// Define the result ordering
-		Aspect $weigh = new Aspect(aspects::field, null),	// Augment sorting with weights
-		Aspect $sift = new Aspect(aspects::field, null),	// Rej
-		Aspect $divide = new Aspect(aspects::field, null),	// Divide the result set into groups
-		Aspect $filter = new Aspect(aspects::field, null),	// Apply post-processing filters to the result set
+		Aspect $pick 	= new Aspect(aspects::container),	// Constraints on the resource selection
+		Aspect $sort 	= new Aspect(aspects::container),	// Define the result ordering
+		Aspect $weigh 	= new Aspect(aspects::container),	// Augment sorting with weights
+		Aspect $sift 	= new Aspect(aspects::container),	// Partition and add criteria to the result set
+		Aspect $divide 	= new Aspect(aspects::container),	// Divide the result set into groups
+		Aspect $filter 	= new Aspect(aspects::container),	// Apply post-processing filters to the result set
 	)
 	{
-		self::RegisterSources([$proto]);
-
 		/** Alter resource selection via Aspects*/
 		$this->__selection = [
-			pick		=> ($pick ?? new Aspect(aspects::field, ...$pick)),
-			sort		=> ($sort ?? new Aspect(aspects::field, null)),
-			weigh		=> ($weigh ?? new Aspect(aspects::field, null)),
-			sift		=> ($sift ?? new Aspect(aspects::field, null)),
-			divide		=> ($divide ?? new Aspect(aspects::field, null)),
-			filter		=> ($filter ?? new Aspect(aspects::field, null))
+			pick		=> ($pick 	?? new Aspect(aspects::container)),
+			sort		=> ($sort 	?? new Aspect(aspects::container)),
+			weigh		=> ($weigh 	?? new Aspect(aspects::container)),
+			sift		=> ($sift 	?? new Aspect(aspects::container)),
+			divide		=> ($divide ?? new Aspect(aspects::container)),
+			filter		=> ($filter ?? new Aspect(aspects::container))
 		];
 	}
 
-	public static function RegisterSources(Service|array $source)
-	{
-		if ($source instanceof Service) 
-		{
-			self::$source[] = new Service();
-		}
-		if (is_array($source)) 
-		{
-			foreach ($source as $s) 
-			{
-				$service_name='';
-				if (is_string($s))
-				{
-					$service_name = $s;
-					$s = new $service_name();
-				}
-				if ($s instanceof Service) 
-				{
-					self::$source[] = $s;
-					$service_name = get_class($s);
-				}
-				else 
-				{
-					throw new \Exception('Resource\\'.static::class.' - Invalid source '.$service_name.': '.PHP_EOL. var_export($s, true));
-				}
-			}
-		}
-		if (empty(self::$source)) 
-		{
-			throw new \Exception('No source defined for Resource');
-		}
-	}
-	private static function PrimeConnection()
-	{
-		foreach(self::$source as $source)
-		{
-			$connection = $source->connect();
-			if(!($connection instanceof accessible))
-			{
-				throw new \Exception('Connection is not accessible');
-			}
-		}
-		return nullstate::ambiguous;
+	public function define(){
+		
+		$aspects = aspects::manifest($this);
+
+		// $this->aspects = $aspects;
+		// $this->aspects[aspects::container]->nodes = $aspects;
+		// $this->aspects[aspects::container]->nodes[aspects::container]->nodes = $aspects;
+		// $this->aspects[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes = $aspects;
+		// $this->aspects[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes = $aspects;
+		// $this->aspects[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes = $aspects;
+		// $this->aspects[aspects::container]->nodes[aspect
 	}
 
 	public function find(
@@ -162,17 +117,18 @@ class Resource extends RenderNode implements accessible, Stream
 		?Aspect $pick		= null,
 		?Aspect $sift		= null,
 		?Aspect $divide		= null,
+		?Aspect $what		= null,
 		?callable $filter	= null,
 		?string $as			= null
-	):Resource|accessible|nullstate
+	):Resource|Stringable|string|nullstate
 	{
 
 		return nullstate::ambiguous;
 	}
 
 	public function sort(\Stringable|string|field|Aspect $by, bool $ascending = true){
-		if(is_string($by) || $by instanceof \Stringable)
-			$by = new field(aspects::field, $by );
+		if( !($by instanceof Aspect) )
+			$by = new field(aspects::field, $by->__toString() );
 
 		$by[quality] = $by[quality] ?? $ascending;
 		$this->aspects[sort]->nodes[ $by->label ] = $by;
@@ -194,18 +150,30 @@ class Resource extends RenderNode implements accessible, Stream
 	public function filter(Aspect $by){
 		$this->aspects[filter]->nodes[]	= $by;
 	}
+
+	// Use Service's Encode/Decode classes to convert $this to $type
 	public function as(RenderNode $type){
-		$caster = 'from_'.self::class;
-		return $type::$caster($this);
+		$typename = $type::class || $type->__toString();
+		$service = new Service(
+			\Approach\Service\flow::in, 
+			format_in: format::custom,
+			format_out: format::$$typename,
+			target_in: target::resource,
+			target_out: target::variable,
+			input: [$this]
+		);
+		return $service->payload;
+
 	}
 
+	// Mimic preg_match('/^(\d+\.\.)(\d+)$/', $value, $matches) with strpos()
 
 	/**
-	 * Should always return $exchange->payload
+	 * Should always return a Service payload
 	 *
 	 * @param \Approach\Render\KeyedNode $service Any compatible payload container, ideally an object of type Service
 	 * @param \Approach\Render\Node $source Any object, string, id, etc.. representing the sort of formatted resource to be loaded
-	 * @return \Approach\Render\Node $result Any object, string, id, etc.. representing the sort of formatted resource to be loaded
+	 * @return array The payload of the service
 	 * @access public
 	 */
 	public function load($service, RenderNode $source){
@@ -222,12 +190,58 @@ class Resource extends RenderNode implements accessible, Stream
 	public function save($exchange, RenderNode $type){
 		return false;
 	}
+
+
+	/**
+	 * Mint a resource class file
+	 */
+	public function MintResourceClass(
+		string $path,
+		string $class,
+		string $extends,
+		string $namespace,
+		array $uses = [],
+		array $constants = [],
+		array $properties = [],
+		array $methods = [],
+		$overwrite = false
+	): void
+	{
+		// If the file does not exist, then build it
+		if (!file_exists($path) || $overwrite)
+		{
+			// Grab the last part of the class name for the label
+			$class = explode('\\', $class);
+			$class = $class[count($class) - 1];
+
+			$extends = $extends ?? '\Approach\Resource\MariaDB\Server';
+			$namespace = $namespace ?? \Approach\Scope::$Active->project . '\Resource';
+			$uses = $uses ?? [ static::class, ];
+
+			$content = '<?php ' . PHP_EOL . PHP_EOL;
+
+			// Write the namespace
+			$content .= 'namespace ' . $namespace . ';' . PHP_EOL . PHP_EOL;
+			foreach ($uses as $use)	$content .= 'use ' . $use . ';' . PHP_EOL;
+
+			// Write the class
+			$content .= 'class ' . $class . ' extends ' . $extends . '{' . PHP_EOL;
+			foreach ($constants as $constant)	$content .= 'const ' . $constant . ';' . PHP_EOL;
+			foreach ($properties as $property)	$content .= 'public ' . $property . ';' . PHP_EOL;
+			foreach ($methods as $method)		$content .= $method . PHP_EOL;
+			$content .= '}' . PHP_EOL;
+
+			$file = fopen($path, 'w');
+			fwrite($file, $content);
+			fclose($file);
+		}
+	}
 }
 
 
 
 
-/*	Harvested Formats
+/* Various Formats
 	 * 		- JSON
 	 * 		- YAML
 	 * 		- CSV

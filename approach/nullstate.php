@@ -2,6 +2,18 @@
 
 namespace Approach;
 
+/** 
+ * @object Approach\nullstate		-	Enumeration of null states
+ * @package Approach
+ * @subpackage Approach\core
+ * @version 2.0.-1 beta
+ * 
+ * Each value represents a different state of null or undefined in a program. 
+ * This enumeration can be used in code to represent and handle different null states. 
+ * The null state is a state of a variable or object that is not defined, or is not yet defined.
+ * 
+ */
+
 enum nullstate: int	
 {
 	case null				= 1;	// the	O.G. null, the state itself is unknown

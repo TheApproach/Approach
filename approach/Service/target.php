@@ -9,13 +9,17 @@ namespace Approach\Service;
 
 enum target: int
 {
-    case file = 0;
-    case database = 1;
-    case cli = 2;
-    case api = 3;
-    case url = 4;
-    case service = 5;
-    case variable = 6;
-    case stream = 7;
-    case default = 8;
+    // streamable targets
+    case stream 		= 0;
+    case transfer 		= 1;
+    case route          = 2;    
+    case file 			= 3;
+    case cli 			= 4;
+    case api 			= 5;
+    case url 			= 6;
+
+    // passtrough targets
+    case resource 		= 7;
+    case service 		= 8;
+    case variable 		= 9;	
 }

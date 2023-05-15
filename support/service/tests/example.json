@@ -1,0 +1,17 @@
+[
+    {
+        "type": "row",
+        "id": 52,
+        "size": 10
+    },
+    {
+        "type": "row",
+        "id": 100,
+        "size": 15
+    },
+    {
+        "type": "block",
+        "id": 200,
+        "size": 25
+    }
+]

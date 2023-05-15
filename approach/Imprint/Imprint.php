@@ -23,6 +23,7 @@ class Imprint extends Render\Node\Keyed
 	protected array $_used_symbols			= [];
 	protected array $_bound					= [];
     protected static array $type_constructors = [];
+	protected $register_token=[];
 
 	public static function RegisterType(string $type, string $class): void
 	{
@@ -128,12 +129,12 @@ class Imprint extends Render\Node\Keyed
 		];
 	}
 	
-    public function __toString(): string
+    public function __toString()
     {
         return $this->render();
     }
 
-	public function __invoke(): string
+	public function __invoke()
 	{
 		return $this->render();
 	}
@@ -377,7 +378,7 @@ class Imprint extends Render\Node\Keyed
 							];
 
 							$value = '$'.$n->name.'_token';
-							$this->register_token[$n->name] = ' $' . $n->name . '_token;';
+							// $this->register_token[$n->name] = ' $' . $n->name . '_token;';
 
 							$direct_value = true;
 						}
@@ -528,9 +529,11 @@ class Imprint extends Render\Node\Keyed
 		}
 
 		$code = [];
-		$append = $property == 'attributes' ? '' : '[]';
+		$append = ($property == 'attributes' || $property == 'classes') ? '' : '[]';
+
 		$code[] = <<<attribute
 			\$opt['{$property}'] = [];
+			\$opt['{$property}']{$append} = [];
 		attribute;
 
 		foreach($all as $attr){
@@ -635,7 +638,7 @@ class Imprint extends Render\Node\Keyed
     {
         $imprint_path = path::imprint->get();
 
-        // remove any file extension from the end of the imprint file string
+        // remove file extension from the end of the imprint file string
         $path = $this->imprint;
         $extension = strrchr($path, '.');
         $path = substr($path, 0, -strlen($extension));
@@ -647,7 +650,7 @@ class Imprint extends Render\Node\Keyed
     {
         $status = nullstate::ambiguous;
         try {
-            var_export($this->pattern);
+            // var_export($this->pattern);
             /*
 
 			/Users/tom/Dev/Suitespace/Approach/tests/Unit/../../Approach/Imprint/test/test/display.php

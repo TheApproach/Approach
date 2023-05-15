@@ -18,42 +18,30 @@ class Aspect extends Node
 		$this->ancestor = $ancestor == Node::$null ? $this : $ancestor;
 		foreach ($aspects as $aspect)
 		{
+			// Convert from enum to instance
 			if($aspect instanceof aspects)
 			{
 				$aspect = new self($aspect, $this, ancestor: $this->ancestor);
 				$this->nodes[] = $aspect;
 			}
+
+			// Convert from parameter array to instance
 			if(is_array($aspect))
 			{
 				$aspect = new self(...$aspect, $this,ancestor: $this->ancestor);
 				$this->nodes[] = $aspect;
 			}
+
+			// No conversion necessary
 			elseif($aspect instanceof self)
 				$this->nodes[] = &$aspect;
 
+			// Invalid aspect if we were unable to make an instance
 			if(!$aspect instanceof self)
 				throw new \Exception('Invalid aspect');
 
 			$this->aspects[$aspect->type->value][] = &$aspect;
 		}
-	}
-
-
-	public function getFilterCriteria()
-	{
-		$criteria = array_map(function ($filter) {
-			// Use the getFilterExpression() method of each filter to construct the filter criteria
-			return $filter->getFilterExpression();
-		}, $this->filters);
-
-		// Join the filter criteria with the specified logical operator
-		return implode(' ' . $this->operator . ' ', $criteria);
-	}
-
-	public function getFilterExpression()
-	{
-		// Use the getFilterCriteria() method to construct the filter expression
-		return '(' . $this->getFilterCriteria() . ')';
 	}
 
 	/**
@@ -88,11 +76,10 @@ class Aspect extends Node
 
 	public function define()
 	{
-		/* All aspect classes are generated in a Resource\MyResource namespace
+		/* 
+         * All aspect classes are generated in a Resource\MyResource namespace
 		 * Extract the path component immediately following 'Resource\' from __NAMESPACE__
-		 * This is the name of the Resource class and will match Scope::$proto[ 'my resource protocol' ],
-		 * when all is said and done, where Service Connections are to be stored 
-		 * as 1 or more connection pools per Resource class
+		 * This is the name of the Resource class and will match Scope::$proto[ 'my resource protocol' ]
 		 */
 		$proto = substr(__NAMESPACE__, strrpos(__NAMESPACE__, '\\') + 1);
 
@@ -130,6 +117,7 @@ class Aspect extends Node
 			);
 		}
 
+		/*/ 
 		// Build a tree of Aspect objects
 		$this->nodes[] = new Aspect(
 			type: aspects::location, 
@@ -137,6 +125,7 @@ class Aspect extends Node
 			parent: $this, 
 			ancestor: $this->ancestor ?? $this->parent ?? $this
 		);
+		/**/
 	}
 }
 
@@ -201,7 +190,8 @@ class Aspect extends Node
 	public static $keywords;									// keywords for the quality
 	public static $children;									// children qualities of the quality
 	public static $related;										// related qualities of the quality
-	public static $parents;										// parents of the quality
+	public static $type;										// the type of the quality
+	public static $state;										// the present state of the quality
 }
 
 /**
@@ -220,7 +210,7 @@ class Aspect extends Node
  class quantity extends Aspect
 {
 	public static $label;										// label for the quantity
-	public static $description;									// description of the quantity	
+	public static $description;									// description of the quantity
 	public static $values;										// valid value of the quantity
 	public static $ranges;										// ranges of the quantity
 	public static $units;										// unit of the quantity
@@ -244,29 +234,31 @@ class Aspect extends Node
  * 
  */
 
- class map extends Aspect
+class map extends Aspect
 {
+	public static $type;										// type of the mapping (Token map, Settings map, Service map, etc.)
 	public static $label;										// label for the mapping
+	public static $tag;											// tag augmenting the label
+	public static $version;										// version of the mapping
+	public static $last_modified;								// last modified date of the mapping
 	public static $description;									// description of the mapping
 	public static $from;										// source of the mapping
 	public static $to;											// destination of the mapping
-	public static $rules;										// rules of the mapping
-	public static $mappings;									// mappings of the mapping
-	public static $transformations;								// transformations of the mapping
-	public static $conversions;									// conversions of the mapping
+	public static $known_callers;								// known callers of the mapping
+	public static $previous;									// previous version of the mapping
+	public static $map;											// the map structure
 }
 
 /**
  * Authorization aspect class
- * appended to an aspect's $this->nodes to indicate that the aspect must be authorized according to the authorization aspect's realms, roles, and permissions
+ * appended to an aspect to indicate that the aspect must be authorized according to the authorization aspect's realms, roles, and permissions
  * aspects implement ArrayObject through Node, so this is a valid way to append authorization information to an aspect according to a role key and child node permissions key 
  * (e.g.)
  * $permission = new Resource\Authorization(Aspect $aspect, $degree);	// degree denotes read, write, update, delete, create, list, search, action, admin or browse
  * 																		// $aspect is the aspect to which the permission applies
  * 																		// complex permissions can be created by nesting permissions in the $aspect's $this->nodes
- * MyResource::authorizations = new Resource\Authorization()
+ * MyResource::authorizations = new Resource\Authorization(...)
  * MyResource::authorizations['role'] = $permission;
- * 
  * 
  * @package		Approach
  * @subpackage	Resource

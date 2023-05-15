@@ -8,13 +8,13 @@ use \Approach\nullstate;
 
 interface sourceable
 {
-	public static function aquire(Node $where): ?Node;
-	public static function pull(Node $where): ?Node;
-	public static function load(Node $where): ?Node;
+	public static function aquire(...$opt):Resource;
+	public static function pull(...$opt):Resource;
+	public static function load(...$opt):Resource;
 
-	public function save(Resource $where): ?bool;
-	public function push(Resource $where): ?bool;
-	public function release(Resource $where): ?bool;
+	public function save(...$opt):nullstate;
+	public function push(...$opt):nullstate;
+	public function release(...$opt):nullstate;
 
-	public function discover(null|Resource $which): nullstate;
+	public function discover(...$opt):Resource;
 }

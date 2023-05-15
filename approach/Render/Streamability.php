@@ -51,7 +51,7 @@ trait Streamability
 		return [];
 	}
 
-	public function offsetExists($label): bool
+	public function offsetExists($label): bool|nullstate
 	{
 		if (is_int($label))	return isset($this->nodes[$label]);
 		else return
@@ -60,9 +60,9 @@ trait Streamability
 				isset($this->nodes[$this->_labeled_nodes[$label]])
 				?
 					true
-				:	nullstate::undefined
+				:	false //nullstate::undefined
 			)
-			:	nullstate::undeclared;
+			:	false; //nullstate::undeclared;
 	}
 
 	public function offsetGet(mixed $label): mixed

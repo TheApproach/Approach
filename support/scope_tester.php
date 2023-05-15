@@ -23,5 +23,4 @@ $CurrentScope = new Scope(
     ],
     mode : runtime::staging
 );
-var_dump( Scope::GetApproach() );
 var_dump( Scope::GetPath(path::compositions) );

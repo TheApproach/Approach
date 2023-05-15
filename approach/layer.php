@@ -15,28 +15,37 @@ enum layer: int
 	case instrument			= 7;
 	case ensemble			= 8;
 	case orchestra			= 9;
-	case region				= 10;
-	case world				= 11;
-	case cosmos				= 12;
+	case troupe				= 10;
+	case tour				= 11;
+	case theatre			= 12;
 
 
 	// e.g. path::statics->path($project_dir);    // '/srv/project/static/'
-	public function get(): string
+	public function get($root = null): string
 	{
+		$root = $root ?? Scope::$Active->project ?? 'Approach';
+
+		// If the current scope is the project scope, check if user customized the path
+		if($root == Scope::$Active->project){
+			if( isset(Scope::$context[context::layer][$this->value]) ){
+				return Scope::$context[context::layer][$this->value];
+			}
+		}
+
 		return match ($this) {
-			self::work         => (Scope::$Active->project ?? 'Approach') . '\\Work',
-			self::render       => (Scope::$Active->project ?? 'Approach') . '\\Render',
-			self::resource     => (Scope::$Active->project ?? 'Approach') . '\\Resource',
-			self::imprint      => (Scope::$Active->project ?? 'Approach') . '\\Imprint',
-			self::component    => (Scope::$Active->project ?? 'Approach') . '\\Component',
-			self::composition  => (Scope::$Active->project ?? 'Approach') . '\\Composition',
-			self::service      => (Scope::$Active->project ?? 'Approach') . '\\Service',
-			self::instrument   => (Scope::$Active->project ?? 'Approach') . '\\Instrument',
-			self::ensemble     => (Scope::$Active->project ?? 'Approach') . '\\Ensemble',
-			self::orchestra    => (Scope::$Active->project ?? 'Approach') . '\\Orchestra',
-			self::region       => (Scope::$Active->project ?? 'Approach') . '\\Region',
-			self::world        => (Scope::$Active->project ?? 'Approach') . '\\World',
-			self::cosmos       => (Scope::$Active->project ?? 'Approach') . '\\Cosmos',
+			self::work       	=> $root . '\\Work',
+			self::render     	=> $root . '\\Render',
+			self::resource   	=> $root . '\\Resource',
+			self::imprint    	=> $root . '\\Imprint',
+			self::component  	=> $root . '\\Component',
+			self::composition	=> $root . '\\Composition',
+			self::service    	=> $root . '\\Service',
+			self::instrument 	=> $root . '\\Instrument',
+			self::ensemble   	=> $root . '\\Ensemble',
+			self::orchestra  	=> $root . '\\Orchestra',
+			self::troupe     	=> $root . '\\Troupe',
+			self::tour       	=> $root . '\\Tour',
+			self::theatre    	=> $root . '\\Theatre',
 		};
 	}
 

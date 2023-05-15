@@ -6,4 +6,5 @@ actor: UnitTester
 modules:
     enabled:
         - Asserts
+        - Cli
     step_decorators: ~

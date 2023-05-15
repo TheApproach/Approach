@@ -27,6 +27,7 @@ class Scope
 	// Generally an abstract class with a static method "cases()" is used to define the labels
 	// Sometimes enums are used instead of abstract classes, but enums are not as flexible yet
 
+	// Labeled Symbols
 	public static $Active = NULL;			// The currently active Scope
     public static $Service = [];			// Labeled array of services by label
 	public static $triage = [];				// Labeled array of handlers by Exception::getCode()
@@ -39,6 +40,7 @@ class Scope
 	public static $actions					= [ self::in =>[], self::out => [] ];
 
     public Render\Node $ErrorRenderable;
+	public $type;
     public static $OutputStream;
 
     /*
@@ -59,18 +61,19 @@ class Scope
 
     function __construct(
         public array $path = [
-            path::project->value    =>  '/srv/example.com',
-            path::installed->value    =>  '/srv/example.com/support/lib/approach',
+            path::project->value    =>  '/srv/local.home',
+            path::installed->value    =>  '/srv/local.home/support/lib/approach',
         ],
 
         public array $deployment = [
-            deploy::base->value   =>  'example.com'
+            deploy::base->value   =>  'local.home'
         ],
         public runtime $mode = runtime::staging,
         public runtime $state = runtime::staging,
         $OutputStream = 'php://stdout',
         public $project = 'Approach'
     ) {
+
         Scope::$OutputStream = fopen($OutputStream, 'w');
         $this->ErrorRenderable = new Render\Node(content: ' Sorry, this item is not feeling well today. ');
 
@@ -82,7 +85,7 @@ class Scope
 
         foreach (deploy::cases() as $label) {
             self::$context[context::deploy->value][$label->value] =
-                $path[$label->value] ??
+                $deployment[$label->value] ??
                 $label->get($deployment[deploy::base->value]);
         }
 
@@ -93,10 +96,11 @@ class Scope
          * If your project has static initializers, extend Scope and put them in your constructor, then call parent::__construct()
          */
 
-        Render\Node::__static_init();
+		Render\Node::__static_init();
+		Service\Service::__static_init();
 
         
-        self::$Active = $this;
+        Scope::$Active = $this;
     }
 
     public function __destruct()
@@ -144,33 +148,23 @@ class Scope
     {
         return self::$state = $p;
     }
-
-    public static function GetApproach(): array
+    
+    protected function error_out($string, $prefix = ' > '): void
     {
-        return [
-            Scope::GetPath(path::project)   . 'support/_config.php',
-            Scope::GetPath(path::installed) . 'base/Renderables/DisplayUnits.php',
-            Scope::GetPath(path::installed) . 'base/Dataset.php',
-            Scope::GetPath(path::installed) . 'base/Smart.php',
-            Scope::GetPath(path::installed) . 'base/ClientEvents.php',
-            Scope::GetPath(path::installed) . 'core/Component.php',
-            Scope::GetPath(path::installed) . 'core/Composition.php',
-            Scope::GetPath(path::installed) . 'core/Service.php',
-        ];
+		$this->ErrorRenderable[] = new Render\Node( $prefix . $string . PHP_EOL);
     }
 
-    function cerr($string, $prefix = ' > '): void
+    public function ExportError($obj, $name = 'Approach Error Log'): void
     {
-        global $ApproachDebugConsole;
-        $ApproachDebugConsole->content .= $prefix . $string . PHP_EOL;
-    }
-
-    function cerr_export($obj, $name = 'STANDARD:OUTPUT_STREAM'): void
-    {
-        global $ApproachDebugConsole;
-        $ApproachDebugConsole->content .= PHP_EOL . PHP_EOL . ' > ::::: BEGIN ' . $name . ' ::::: ' . PHP_EOL;
-        $ApproachDebugConsole->content .= var_export($obj, true);
-        $ApproachDebugConsole->content .= PHP_EOL . ' > ::::: END ' . $name . ' ::::: ' . PHP_EOL . PHP_EOL;
+        
+        $ConsoleOutput = 
+		PHP_EOL . PHP_EOL . 
+		' > ::::: BEGIN ' . $name . ' ::::: ' . PHP_EOL.
+        	var_export($obj, true).PHP_EOL . 
+		' > ::::: END ' . $name . ' ::::: ' . 
+		PHP_EOL . PHP_EOL ;
+		
+		$this->error_out($ConsoleOutput);
     }
 
     function generateCallTrace(): string

@@ -6,20 +6,26 @@ use \Approach\nullstate;
 
 trait connectivity
 {
-	public static self $open_connections = [];
+	public bool $connected = false;
+	public mixed $connection;
+	protected $alias=null;
+	protected static array $connections = [];
+	protected static $connection_limit = null;
+	protected static $num_connected = 0;
 
 	public function connect(): nullstate
 	{
+		// $state = nullstate::ambiguous;
 		return nullstate::defined;
 	}
 	public function disconnect(): bool|null
 	{
 		return null;
 	}
-	public function send()
+	public function Respond()
 	{
 	}
-	public function recieve()
+	public function Recieve()
 	{
 	}
 }

@@ -1,7 +1,7 @@
 <?php
 
 namespace Approach\Service;
- 
+
 enum format: int
 {
     case json = 0;
@@ -41,4 +41,5 @@ enum format: int
     case archive = 40;
     case ask = 41;
     case default = 42;
+    case custom = 43;
 }

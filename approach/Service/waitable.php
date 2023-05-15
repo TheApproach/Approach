@@ -1,25 +1,27 @@
 <?php
 
 namespace Approach\Service;
+use Approach\Render\Node;
 use \Fiber;
 use \Exception;
 
 trait waitable
 {
 	public Fiber $fiber;
+	public Node $branches;
 
 	public function branch(callable $callback, null|array ...$args): int
 	{
 		$promise = new self($callback, $args);
 		$promise->fiber = new Fiber($callback);
 		$promise->fiber->start(...$args);
-		$this->nodes[] = $promise;
-		return count($this->nodes) - 1;
+		$this->branches[] = $promise;
+		return count($this->branches) - 1;
 	}
 
 	public function awaitChildFibers(): void
 	{
-		for($i = 0; $i < count($this->nodes); $i++)
+		for($i = 0; $i < count($this->branches); $i++)
 		{
 			$this->waitForChild($i);
 		}
@@ -29,10 +31,10 @@ trait waitable
 
 	public function await(?int ...$fiberIndices): void
 	{
-		if (empty($fiberIndices) && !empty($this->nodes))
+		if (empty($fiberIndices) && !empty($this->branches))
 		{
 			$fiberIndices = [];
-			foreach ($this->nodes as $node)
+			foreach ($this->branches as $node)
 				if ($node->fiber)
 					$fiberIndices[] = $node->fiber;
 		}

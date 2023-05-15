@@ -19,6 +19,7 @@ use \Approach\Resource\Resource;
 
 enum aspects
 {
+	case container;
 	case location;
 	case operation;
 	case field;
@@ -40,9 +41,9 @@ enum aspects
 		foreach ($cases as $case)
 		{
 			$aspect = $namespace . '\\' . $case;
-			if (class_exists($aspect))
+			if ( ($aspect instanceof Aspect) && ($resource instanceof Resource))
 			{
-				$aspects[$case] = $aspect::define();		// Build a tree of Aspect objects
+				$aspects[$case] = $resource::define($aspect);		// Build a tree of Aspect objects
 			}
 			else
 			{

@@ -35,6 +35,7 @@ class ScopeCest
             path: [
                 path::project->value        =>  $path_to_project,
                 path::installed->value      =>  $path_to_approach,
+                path::support->value        =>  $path_to_support,
             ],
         );
 

@@ -116,7 +116,7 @@ trait connectability
 				return nullstate::nolongernull;
 			}
 		);
-		if ($fiber->status === nullstate::ambiguous) {
+		if ($fiber->isSuspended() ) {
 			$fiber->resume(nullstate::ambiguous);
 		}
 		// start the fiber

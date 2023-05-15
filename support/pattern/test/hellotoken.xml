@@ -1,0 +1,7 @@
+<Imprint xmlns:Imprint="Render://approach.local">
+    <Imprint:Pattern name="hello" type="HTML">
+        <div class="hello [@ classToken @] " data-attrib='abc [@ attr_token @] abc' bind="document">
+            hi [@ person @]!
+        </div>
+    </Imprint:Pattern>
+</Imprint>
