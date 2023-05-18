@@ -65,9 +65,9 @@ class Node extends Container
 	use Node\Properties;
 	use Streamability;
 
-	public function __construct(public null|string|Stringable|Stream $content = null, public bool $prerender = false)
+	public function __construct(public null|string|Stringable|Stream $content = null, public bool $prerender = false )
 	{
-		// $this->set_render_id();
+        $this->set_render_id();
 	}
 
 	# an initializer for the statics
@@ -103,8 +103,8 @@ class Node extends Container
 	/**
 	 * This recursively searches for a node with a specific ID within a tree structure.
 	 * 
-	 * @param root This is a reference to the root node of a tree structure.
-	 * @param _render_id _render_id is a parameter that represents the unique identifier of a node in a
+	 * @param &$root This is a reference to the root node of a tree structure.
+	 * @param $_render_id _render_id is a parameter that represents the unique identifier of a node in a
 	 * tree structure. The function is designed to search for a node with a specific _render_id and return
 	 * it if found.
 	 * 

@@ -13,15 +13,3 @@ class MyData extends \Approach\Resource\MariaDB\Server
 	
 	
 }
-
-/*
-// use MyProject\Resource\MyData;
-// use MyProject\Resource\MyData\MyTable\fields;                // enum
-
-$MyData->nodes[ 'TableName' ];  //  MyProject\Resource\MyData\TableName
-$MyData->nodes[ 'TableName' ]->nodes['ColumnName'];             //  MyProject\Resource\MyData\TableName\ColumnName
-
-$MyData['TableName']['ColumnName'];  //  MyProject\Resource\MyData\TableName\ColumnName
-$MyData[ MyData_tables::TableName->value ][ fields::id->value ] // list of selected id(s)
-
-*/

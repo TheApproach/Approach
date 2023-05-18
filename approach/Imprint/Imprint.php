@@ -24,6 +24,8 @@ class Imprint extends Render\Node\Keyed
 	protected array $_bound					= [];
     protected static array $type_constructors = [];
 	protected $register_token=[];
+    protected $generation_count = [];
+    protected $resolved_symbols = [];
 
 	public static function RegisterType(string $type, string $class): void
 	{
@@ -531,9 +533,9 @@ class Imprint extends Render\Node\Keyed
 		$code = [];
 		$append = ($property == 'attributes' || $property == 'classes') ? '' : '[]';
 
+		// \$opt['{$property}']{$append} = [];
 		$code[] = <<<attribute
 			\$opt['{$property}'] = [];
-			\$opt['{$property}']{$append} = [];
 		attribute;
 
 		foreach($all as $attr){
@@ -566,16 +568,268 @@ class Imprint extends Render\Node\Keyed
 		return $code;
 	}
 
+    public function exportNodeConstructor($node){
+        $prepend = '';
+        $type = get_class($node);
+
+        // Replace Appproach\\Render\\ with Render\\ or *\\Render\\ with ProjectRender\\
+        if (strpos($type, 'Approach\\Render\\') === 0) {
+            $type = substr($type, strlen('Approach\\'));
+        } elseif (strpos($type, Scope::$Active->project . '\\Render\\') === 0) {
+            $type = 'ProjectRender\\' . substr($type, strlen(Scope::$Active->project . '\\'));
+        }
+
+
+        $statement = 'new '.$type.'( ';
+
+        // Get the parameters of the Render\Node descendent's constructor
+        $reflection = new \ReflectionClass($node);
+        $parameters = $reflection ->getConstructor() ->getParameters();
+
+        $blocks = $this->exportParameterBlocks($node, $parameters, $reflection);
+
+        
+        /**
+         * Each parameter may be assigned a value or a symbol
+         * Symbols are only used if a parameter block was produced
+         * 
+         * If a parameter block was produced, $block[$param]['symbol'] will equal
+         * the name of the symbol to use for the parameter, 
+         * 
+         * $block[$param]['content'] will be a code block instantiating the symbol to prepend
+         * Otherwise either use $node->$param or skip if it is not set
+         */
+
+        foreach($parameters as $param => $block){
+            $assignment = '';   
+            
+            if( !empty($blocks[$param]['symbol']) ){
+                $assignment = $blocks[$param]['symbol'];
+
+                $prepend .= '// Instantiating '.$blocks[$param]['symbol'].' for upcoming '.$param.' assignment'.PHP_EOL;
+                $prepend .= $blocks[$param]['content'].PHP_EOL.PHP_EOL;
+            }
+            else{
+                if( !isset($node->$param) ) continue;
+                $assignment = $node->$param;
+            }
+            $statement .= $assignment . ', ';
+        }
+        $statement = trim($statement, ', ') . ' )';
+        
+        return [
+            'prepend' => $prepend,
+            'statement' => $statement
+        ];
+
+        /*  $prepend
+            .PHP_EOL.PHP_EOL.
+            $name . '='. $statement .';'
+        */
+    }
+
+	public function exportParameterBlocks($node, $parameters = [], $reflection){
+		$block=[];
+        $symbol = $this->exportNodeSymbol($node);
+        
+        /**
+         *  $name is the name of the property
+         *  $property is the ReflectionProperty object for the property
+         *  $type is the type of the property
+         *  $value is the value of the property
+         */
+		foreach($parameters as $parameter){
+            $name = $parameter->getName();
+            // If the parameter is not set, skip it
+            if( empty($node->{$name}) && $node->{$name} !== 0 && $node->{$name} !== '0') continue;
+
+            $property = $reflection->getProperty($name);
+            $property->setAccessible(true);
+            $type = ($property->getType() ?? $parameter->getType()) . '';
+            $assigment = $node->{$name} ?? $property->getValue($node);
+
+            // Use this node's symbol + __ + parameter name as parameter symbol
+            $block[$name]['symbol'] = $symbol.'__'.$name;
+
+            // If the parameter is a Node, export it to a symbol
+            if( $assigment instanceof Node ){
+                $container_code = 'new Container';
+
+                $block[$name]['content'] = $this->exportNode(
+                    node: $assigment, 
+                    export_symbol: $block[$name]['symbol']
+                    // container_code: $container_code
+                );
+                continue;
+            }
+
+            // Define the symbol
+            $block[$name]['content'] = $assigment;
+		}
+
+		return $block;
+	}
+
+    public function exportContainerSpecialization($parameter, $type){
+        $code = 'new Container';
+        switch($type){
+            case HTML::class:
+                switch($parameter){
+                    case 'attributes':
+                        $code = 'new Render\Attributes(NULL,NULL)';
+                        break;
+                    case 'classes':
+                        $code = 'new Render\Attribute(\'class\', NULL)';
+                        break;
+                    default: break;
+                }
+                break;
+            case XML::class:
+                switch($parameter){
+                    case 'attributes':
+                        $code = 'new XML\Attributes(NULL,NULL)';
+                        break;
+                    default: break;
+                }
+                break;
+            
+                // TODO: Add specialization hook so you can extend Imprint and add your own specializations
+            default: break;
+        }
+
+        return $code;
+    }
+
+    /**
+     * exportNode
+     * Converts a tree of objects which share Render\Node as a common ancestor into
+     * a tree of PHP code which can be executed to generate the same tree of objects.
+     * 
+     * Relies on:
+     *  - exportNodeSymbol          : 
+     *    Algorithm to elect a symbol for a node
+     *    'string'
+     * 
+     *  - exportNodeConstructor     : exportNode()/$constructor
+     *    Generate a constructor call based on a type's parameters and the instance's property values
+     *    [ 'prepend' => $prepend, 'statement' => $statement ]
+     * 
+     *  - exportParameterBlocks()   : exportNodeConstructor()/blocks
+     *    Produces dependency symbol definitions for a node's parameters
+     *    [ 'symbol' => $symbol, 'content' => $content]
+     * 
+     * 
+     * 
+     * Must keep in mind: 
+     * parent nodes occur in the context of both element nodes and parameter node composition
+     * 
+     * e.g. a node may be a child of an element, but parameters may also be nodes composed of other nodes
+     * this allows for token placement mid-parameter, eg <html data-[@ attr @]='{ "value": "[@ content @]" }'>
+     *
+     * This is important for retaining the preceeding and proceeding content while being able to reference
+     * tokens within the content is important
+     */
+
+	public function exportNode( Node $node, $parent = null, $export_symbol = null ){ //}, $container_code = 'new Container()'){
+        // track how many times this function has run
+        static $export_count = 0;
+        // track depth of recursion, for tabbing
+        static $export_depth = 0;
+        $export_depth++;
+        $tab = str_repeat("\t", $export_depth + 1);
+
+        $symbol = $export_symbol ?? $this->exportNodeSymbol($node);
+		$constructor = $this->exportNodeConstructor($node);
+
+        $append     = $parent === null ? '$' : '$'.$parent.'[] = $';
+
+        $child_exports = '';
+        foreach($node->nodes as $child){
+            $child_exports .= PHP_EOL .$this->exportNode($child, $symbol) ;
+        }
+        if(!empty($child_exports)) $child_exports .= PHP_EOL;
+
+        // $blocks = $this->exportParameterBlocks($node, $node->parameters, $node->reflection);
+
+        // // If there are no blocks, just return the constructor
+        // if( empty($blocks) ){
+        //     return $constructor['prepend'] . PHP_EOL . $append . $symbol . ' = ' . $constructor['statement'] . ';' . PHP_EOL . $child_exports;
+        // }
+
+        // // If there are blocks, export them
+        // $block_exports = '';
+        // foreach($blocks as $block){
+        //     $block_exports .= $block['symbol'] . ' = ' . $block['content'] . ';' . PHP_EOL;
+        // }
+        $export_depth--;
+        return 
+            // $container.                                          // Define $_root_node if $parent is null
+            // $block_exports .                                     // Export parameter blocks
+            $constructor['prepend']                                 // Define symbols for parameters
+            .
+            $tab .$append . $symbol . ' = ' . $constructor['statement'] . // $parent[] = $MySymbol = new Type( ... );
+            ';' . 
+            $child_exports                                          // Export child nodes
+        ;
+	}
+
+    /**
+     * exportNodeSymbol
+     * 
+     * Algorithm to elect a symbol for a node
+     * Note: Only element nodes are sent to exportNodeSymbol(), parameter and token nodes have their own exports
+     * 
+     * @param Node $node
+     * @param string $render_type
+     * @param string $parent
+     * @return string
+     */
+
+     public function exportNodeSymbol(Node $node){
+        $type = get_class($node);
+
+        // Remove the first two namespace paths from the type ( e.g. Approach\[layer] or [MyProject]\[layer] )
+        $type = substr($type, strpos($type, '\\', strpos($type, '\\') + 1) + 1);
+        $id = $node->_render_id;
+
+        // Set $this->generation_count[$type] to 0 if not set
+        if( !isset($this->generation_count[$type]) ) $this->generation_count[$type] = 0;
+
+        // If $_bound[$node->_render_id] is set, assign it to $resolved_symbols[$node->_render_id]
+        // If the symbol was previously resolved, do not increment $this->generation_count[$type]
+        // This allows the pattern file to pass a symbol to a node through the Imprint:bind="symbol" attribute
+        if( isset($this->_bound[$id]) ){
+            // Only count each node once per pattern
+            if( !isset($this->resolved_symbols[$id]) ){
+                $this->generation_count[$type]++;   
+            }
+            $this->resolved_symbols[$id] = $this->_bound[$id];
+        }
+
+        // If $resolved_symbols[$id] is still not set
+        // Assign $resolved_symbols[$id] to [type]_[generation_count[type]]
+        // Increment $this->generation_count[$type]
+        if( !isset($this->resolved_symbols[$id]) ){
+            $this->resolved_symbols[$id] = $type . '_' . $this->generation_count[$type];
+            $this->generation_count[$type]++;
+        }
+
+        return $this->resolved_symbols[$id];
+     }
+    
+
+
     public function print($pattern = null)
     {
         $tree = $this->pattern[$pattern];
 
 		// $this->_bound[ $tree->_render_id] = '$this';
-        $dom = $this->exportTree($tree, 'Approach\\Render\\Node');
-        $lines = '';
-        foreach ($dom as $line) {
-            $lines .= $line . PHP_EOL;
-        }
+        // $dom = $this->exportTree($tree, 'Approach\\Render\\Node');
+        $lines = $this->exportNode($tree);
+        // $lines = '';
+        // foreach ($dom as $line) {
+        //     $lines .= $line . PHP_EOL;
+        // }
 
         $project_render_NS = "\\" . Scope::$Active->project . '\\Render';
 
@@ -590,10 +844,8 @@ class Imprint extends Render\Node\Keyed
 		use \Approach\Render;
 
 		/**
-		* 	This class was generated by Approach's Imprint::print()
-		*	It is a PHP representation of the Imprint tree
-		*	It can be used to create a new Imprint tree from the original XML file
-		*
+		* 	This class was generated by Approach\Imprint::Mint()
+		*	It can be used to create a new Render tree based on the original Pattern
 		*/
 
 		class {$pattern} extends Render\Node
@@ -603,9 +855,9 @@ class Imprint extends Render\Node\Keyed
 
 			public function __construct(array \$tokens = [])
 			{
-				{$lines}
+		{$lines}
 
-				foreach(\$this->tokens as \$key => \$value)
+				foreach(\$tokens as \$key => \$value)
 				{
 					if(isset(\$tokens[\$key]))
 						\$this->tokens[\$key]->content = \$tokens[\$key];
@@ -650,25 +902,45 @@ class Imprint extends Render\Node\Keyed
     {
         $status = nullstate::ambiguous;
         try {
-            // var_export($this->pattern);
-            /*
-
-			/Users/tom/Dev/Suitespace/Approach/tests/Unit/../../Approach/Imprint/test/test/display.php
-
-			*/
-
             if ($pattern !== null) {
                 $file = $this->print($pattern);
                 $imprint_dir = $this->getImprintFileDir();
                 $pattern_path = $imprint_dir . '/' . $pattern . '.php';
-				$imprint_dir = $imprint_dir;
 
 				// Check if the directory exists, if not, create it
-				if (!is_dir($imprint_dir))
-					mkdir(directory: $imprint_dir, recursive: true);
+				if (!is_dir($imprint_dir))  mkdir(directory: $imprint_dir, recursive: true);
 
-				echo 'Writing ' . $pattern_path . PHP_EOL;
-                file_put_contents($pattern_path, $file);
+				echo 'Writing ' . $pattern_path . '...'.PHP_EOL;// . PHP_EOL . $file . PHP_EOL . PHP_EOL;
+                $bytes_written = file_put_contents($pattern_path, $file);
+
+                if( $bytes_written === false ){
+                    // Find out why the file could not be written
+                    echo 'Could not write to ' . $pattern_path . PHP_EOL;
+
+                    // Check if the directory exists
+                    if( !is_dir($imprint_dir) ){
+                        throw new \Exception('The directory ' . $imprint_dir . ' does not exist and could not be created.');
+                    }
+
+                    // Check if the directory is writable
+                    if( !is_writable($imprint_dir) ){
+                        throw new \Exception('The directory ' . $imprint_dir . ' is not writable.');
+                    }
+
+                    // Check if the file exists
+                    if( file_exists($pattern_path) ){
+                        throw new \Exception('The file ' . $pattern_path . ' already exists and could not be overwritten.');
+                    }
+
+                    // Check if the file is writable
+                    if( !is_writable($pattern_path) ){
+                        throw new \Exception('The file ' . $pattern_path . ' is not writable.');
+                    }
+
+                    // If we get here, we don't know why the file could not be written
+                    throw new \Exception('The file ' . $pattern_path . ' could not be written for an unknown reason.');
+                }
+
             } else foreach ($this->pattern as $p => $tree) {
                 echo ' trying.. ' . $p . PHP_EOL;
 
@@ -786,7 +1058,7 @@ class Imprint extends Render\Node\Keyed
     }
 
 
-    public function checkImprint($element, $render_type = \Approach\Render\Node::class): string
+    public function checkImprint($element, $render_type = Node::class): string
     {
 
         if ($element->getName() == 'Pattern') {

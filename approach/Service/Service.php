@@ -24,12 +24,12 @@ use Approach\Render\Node;
 // }
 
 /*
-	- extends from the Branch class and uses the waitable trait, as required.
-	- has constants for extracting, encoding, translating, and performing known actions, as required. These constants are stored in static properties of the class.
-	- has a constructor that takes an activity constant and a flow constant, as required. The constructor sets these values as instance properties.
-	- has a Receive() method that performs extract, transform, and load operations on input data, as required. The method uses the await() method provided by the FiberManager trait to suspend the Fiber and wait for the result of the async operation.
-	- has a Process() method that manages the underlying Branch logic and aggregates the output of child nodes into a payload property, as required. The method uses the create() and await() methods provided by the FiberManager trait to create child Fibers and wait for their results.
-	- has a Respond() method that encodes and sends the payload using the specified format, as required. The method uses the await() method provided by the FiberManager trait to suspend the Fiber and wait for the result of the async operation.
+    - extends from the Branch class and uses the waitable trait, as required.
+    - has constants for extracting, encoding, translating, and performing known actions, as required. These constants are stored in static properties of the class.
+    - has a constructor that takes an activity constant and a flow constant, as required. The constructor sets these values as instance properties.
+    - has a Receive() method that performs extract, transform, and load operations on input data, as required. The method uses the await() method provided by the FiberManager trait to suspend the Fiber and wait for the result of the async operation.
+    - has a Process() method that manages the underlying Branch logic and aggregates the output of child nodes into a payload property, as required. The method uses the create() and await() methods provided by the FiberManager trait to create child Fibers and wait for their results.
+    - has a Respond() method that encodes and sends the payload using the specified format, as required. The method uses the await() method provided by the FiberManager trait to suspend the Fiber and wait for the result of the async operation.
 */
 
 class Service extends Branch
@@ -38,24 +38,47 @@ class Service extends Branch
     const STDOUT = 'php://stdout';
     const STDERR = 'php://stderr';
 
-	use connectivity;
-	public static Node $protocols;
-	
+    public flow $flow = flow::in;
+    public bool $auto_dispatch = true;
+    public format $format_in = format::json;
+    public format $format_out = format::json;
+    public target $target_in = target::transfer;
+    public target $target_out = target::transfer;
+    public $input = null;
+    public $output = null;
+    public mixed $metadata = [];
+    public ?bool $register_connection = true;
+
+    use connectivity;
+    public static Node $protocols;
+
     // use waitable;
     public mixed $payload = null;
 
     public function __construct(
-        public flow $flow = flow::in,
-        public bool $auto_dispatch = true,
-        public ?format $format_in = format::json,
-        public ?format $format_out = format::json,
-        public ?target $target_in = target::file,
-        public ?target $target_out = target::file,
-        public $input = null,
-        public $output = null,
-        public mixed $meta_data = [],
-        public bool $register_connection = true
+        ?flow $flow = null,
+        ?bool $auto_dispatch = null,
+        ?format $format_in = null,
+        ?format $format_out = null,
+        ?target $target_in = null,
+        ?target $target_out = null,
+        $input = null,
+        $output = null,
+        mixed $metadata = null,
+        ?bool $register_connection = null
     ) {
+
+        $this->flow = $flow ?? $this->flow;
+        $this->auto_dispatch = $auto_dispatch ?? $this->auto_dispatch;
+        $this->format_in = $format_in ?? $this->format_in;
+        $this->format_out = $format_out ?? $this->format_out;
+        $this->target_in = $target_in ?? $this->target_in;
+        $this->target_out = $target_out ?? $this->target_out;
+        $this->input = $input ?? $this->input;
+        $this->output = $output ?? $this->output;
+        $this->metadata = $metadata ?? $this->metadata;
+        $this->register_connection = $register_connection ?? $this->register_connection();
+
 
         if (!Decode::has($this->format_in)) {
             throw new \InvalidArgumentException(sprintf('No decoder for %s ($format_in) registered. Register decoder by using Decode::register()', $this->format_in->name));
@@ -72,17 +95,17 @@ class Service extends Branch
         }
     }
 
-	public static function __static_init()
-	{
-		self::$protocols = new Node();
-	}
+    public static function __static_init()
+    {
+        self::$protocols = new Node();
+    }
 
     public function dispatch()
     {
         // Request() should generally be blank if no prefetch API request is required
         // Ex: User upload, AJAX request, etc.
         // Can also be an interpreter for the incoming command argc/argv/$_GET/$_POST/$_SERVER/$_ENV, etc.
-		// This is the first step in the process when fetching the command flow itself is also being handled by the service
+        // This is the first step in the process when fetching the command flow itself is also being handled by the service
         $this->Request();
 
         // Establishes communication with the connected source and preps metadata
@@ -109,7 +132,7 @@ class Service extends Branch
         return $this->Respond();
     }
 
-    public function Request(array $meta_data = null)
+    public function Request(array $metadata = null)
     {
     }
 
@@ -118,38 +141,42 @@ class Service extends Branch
         $this->input = $this->input ?? Service::STDIN;
         $this->output = $this->output ?? Service::STDOUT;
 
-		// Normalize the input to an array, placing single values in the first index of the array
-		if (!is_array($this->input)) {
-			$this->input = array($this->input);
-		}
-		// Normalize the output to an array, placing single values in the first index of the array
-		if (!is_array($this->output)) {
-			$this->output = array($this->output);
-		}
-		
-		$connected=false;
+        // Normalize the input to an array, placing single values in the first index of the array
+        if (!is_array($this->input)) {
+            $this->input = array($this->input);
+        }
+        // Normalize the output to an array, placing single values in the first index of the array
+        if (!is_array($this->output)) {
+            $this->output = array($this->output);
+        }
+
+        $connected = false;
         if ($register_connection) {
-			$this->register_connection();
+            $this->register_connection();
         }
 
         $this->connected = true;
         return true;
     }
 
-	public function register_connection(){
-		$proto = static::getProtocol();
+    public function register_connection()
+    {
+        $proto = static::getProtocol();
 
-		Service::$protocols[$proto] = Service::$protocols[$proto] ?? new Node();
+        if (!isset(Service::$protocols))
+            Service::$protocols = new Node();
+        if (!isset(Service::$protocols[$proto]))
+            Service::$protocols[$proto] = new Node();
 
-		// $num_connected = count(Service::$protocols[$proto][$this->alias ?? $this->_render_id]->nodes);
-		// if( static::$connection_limit !== null && $num_connected >= static::$connection_limit ){
-		// 	$this->disconnect();
-		// 	$this->ServiceException('already_connected', static::class . '::connect()', '');
-		// }
-		// else{
-			Service::$protocols[$proto][$this->alias ?? $this->_render_id]= $this;
-		// }
-	}
+        // $num_connected = count(Service::$protocols[$proto][$this->alias ?? $this->_render_id]->nodes);
+        // if( static::$connection_limit !== null && $num_connected >= static::$connection_limit ){
+        // 	$this->disconnect();
+        // 	$this->ServiceException('already_connected', static::class . '::connect()', '');
+        // }
+        // else{
+        Service::$protocols[$proto][$this->alias ?? $this->_render_id] = $this;
+        // }
+    }
 
     public function Receive(array $payload = null): void
     {
@@ -173,7 +200,7 @@ class Service extends Branch
                 break;
             case target::resource:
                 foreach ($this->input as $i => $input) {
-                    $this->payload[] = new $this->input(...$this->meta_data[$i]);     // maybe ??
+                    $this->payload[] = new $this->input(...$this->metadata[$i]); // maybe ??
                 }
                 break;
             case target::transfer:
@@ -230,7 +257,7 @@ class Service extends Branch
         }
     }
 
-    function ServiceException($mode, $ThrowingService='Service', $key='')
+    function ServiceException($mode, $ThrowingService = 'Service', $key = '')
     {
         if ($mode == 'require') {
             return $key . ' is a required value for ' . $ThrowingService . ' to run properly.';
@@ -240,48 +267,51 @@ class Service extends Branch
         }
     }
 
-	public static function getProtocol(){
-		// Get the class path
-		$classpath = explode('\\', static::class);
+    public static function getProtocol()
+    {
+        // Get the class path
+        $classpath = explode('\\', static::class);
 
-		// Scan for the first instance of 'Service' and return the next element as the protocol
-		foreach ($classpath as $i => $class){
-			if ($class == 'Service'){
-				return $classpath[$i+1];
-			}
-		}
+        // Scan for the first instance of 'Service' and return the next element as the protocol
+        foreach ($classpath as $i => $class) {
+            if ($class == 'Service') {
+                return $classpath[$i + 1];
+            }
+        }
 
-		return 'Service';
-	}
+        return 'Service';
+    }
 
 
-    public static function disconnectAll(){
-		$proto = static::getProtocol();
+    public static function disconnectAll()
+    {
+        $proto = static::getProtocol();
 
-		foreach (Service::$protocols[$proto]->nodes as $alias => $connection){
-			if($connection instanceof \Approach\Service\Service)
-				$connection->disconnect();
-			else{
-				throw new \Exception(
-					'Protocol should always be a Service. Ambiguous node found: ' . $proto . ', alias: ' . $alias 
-				);
-			}
-		}
-	}
+        foreach (Service::$protocols[$proto]->nodes as $alias => $connection) {
+            if ($connection instanceof \Approach\Service\Service)
+                $connection->disconnect();
+            else {
+                throw new \Exception(
+                    'Protocol should always be a Service. Ambiguous node found: ' . $proto . ', alias: ' . $alias
+                );
+            }
+        }
+    }
 
-	public static function disconnectAllExcept($alias = null, $aliases = [] ){
-		$proto = static::getProtocol();
+    public static function disconnectAllExcept($alias = null, $aliases = [])
+    {
+        $proto = static::getProtocol();
 
-		foreach (Service::$protocols[$proto] as $a => $connections){
-			if (in_array($a, $aliases) || $a == $alias)
-				continue;
+        foreach (Service::$protocols[$proto] as $a => $connections) {
+            if (in_array($a, $aliases) || $a == $alias)
+                continue;
 
-			foreach ($connections->nodes as $connection){
-				$connection->disconnect();
-			}
-			$connections->disconnect();
-		}
-	}
+            foreach ($connections->nodes as $connection) {
+                $connection->disconnect();
+            }
+            $connections->disconnect();
+        }
+    }
 
     public function disconnect()
     {
@@ -318,14 +348,14 @@ class Service extends Branch
             $use_include_path = false;
 
             // check if $metadata provides offset, chunk or include_path at the current index
-            if (isset($this->meta_data[$i]['offset'])) {
-                $offset = $this->meta_data[$i]['offset'];
+            if (isset($this->metadata[$i]['offset'])) {
+                $offset = $this->metadata[$i]['offset'];
             }
-            if (isset($this->meta_data[$i]['chunk'])) {
-                $chunk_size = $this->meta_data[$i]['chunk'];
+            if (isset($this->metadata[$i]['chunk'])) {
+                $chunk_size = $this->metadata[$i]['chunk'];
             }
-            if (isset($this->meta_data[$i]['include_path'])) {
-                $use_include_path = $this->meta_data[$i]['include_path'];
+            if (isset($this->metadata[$i]['include_path'])) {
+                $use_include_path = $this->metadata[$i]['include_path'];
             }
 
             $this->payload[] = file_get_contents($input, $use_include_path, $stream_in, $offset, $chunk_size);
@@ -334,14 +364,14 @@ class Service extends Branch
         return $this->payload;
     }
 
-    public function stream_out($stream_out = NULL, array $meta_data = null)
+    public function stream_out($stream_out = NULL, array $metadata = null)
     {
         foreach ($this->output as $i => $output) {
             $flags = 0;
 
             // check if $metadata provides flags at the current index
-            if (isset($this->meta_data[$i]['flags'])) {
-                $flags = $this->meta_data[$i]['flags'];
+            if (isset($this->metadata[$i]['flags'])) {
+                $flags = $this->metadata[$i]['flags'];
             }
 
             file_put_contents(
