@@ -1,3 +1,5 @@
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/8066/badge)](https://www.bestpractices.dev/projects/8066)
+
 # Install Approach
 Currently, you can install Approach through the public git repository or composer. 
 
