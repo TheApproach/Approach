@@ -1,0 +1,135 @@
+.paddings {
+  padding: 1.5rem;
+}
+
+
+
+.span {
+  display: flex;
+ 
+  justify-content: center;
+  flex-wrap: wrap;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  width: 100%;
+  color: #8c8e90;
+  font-size: 30px;
+  margin-bottom: 100px;
+}
+
+.heading {
+  --rs-primary-500: #3498ff;
+  -webkit-font-smoothing: antialiased;
+  height: fit-content;
+  position: relative;
+  color: rgb(98, 98, 191);
+  font-size: 20px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-weight: 600;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.h3 {
+  font-size: 25px;
+  
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+.button-container {
+ 
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  justify-content: center;
+  align-content: center;
+  color: white;
+  background: #400ef4;
+  border: none;
+  width: 400px;
+  border-radius: 4rem 4rem 4rem 4rem;
+  height: fit-content;
+  padding: 0rem;
+  font-size: 14px;
+  cursor: pointer;
+  justify-content: center;
+  
+}
+.checkbox-container {
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  justify-items: flex-start;
+  align-content: center;
+  background: white;
+  width: 400px;
+  border-radius: 4rem 4rem 4rem 4rem;
+  height: fit-content;
+  padding: 0rem;
+  font-size: 14px;
+  cursor: pointer;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.link {
+  text-decoration: none;
+}
+
+.container {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  background: white;
+  border-radius: 1.5rem 1.5rem 1.5rem 1.5rem;
+  justify-content: center;
+  height: 40rem;
+  gap: 10px;
+  width: 50rem;
+  align-items: flex-center;
+}
+
+.not-visible {
+  color: white;
+  background: white;
+  z-index: -3456;
+}
+
+.wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  background: white;
+  min-height: min-content;
+  padding-left: 20%;
+  padding-right: 20%;
+  padding-bottom: 5% ;
+}
+
+.rc-slider-mark-text {
+  font-size: 20px; 
+  font-weight: 500;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+
+.slider-container {
+  justify-content: center;
+  position: relative;
+  height: 5rem;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  color: #400ef4;
+  font-size: 20px;
+  border-bottom: 30px;
+  width: 50rem;
+}
+.slider {
+
+  font-size: 20px;
+}
+
+
+
+
+
+
+
