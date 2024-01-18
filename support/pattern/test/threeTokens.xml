@@ -1,0 +1,13 @@
+<Imprint xmlns:Imprint="Render://approach.local">
+    <Imprint:Pattern name="threeTokens" type="HTML">
+        <div>
+            [@ A @]
+        </div>
+        <div>
+            [@ B @]
+        </div>
+        <div>
+            [@ C @]
+        </div>
+    </Imprint:Pattern>
+</Imprint>

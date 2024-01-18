@@ -1,0 +1,16 @@
+<Imprint xmlns:Imprint="Render://approach.local" xmlns:render="Render://approach.local">
+    <Imprint:Pattern name="iftest" type="HTML">
+
+        <node condition="[@ false_token @]" render:type="ifNode">
+            <div>
+                I should not be rendered
+            </div>
+        </node>
+
+        <div>
+            <node condition="[@ true_token @]" render:type="ifNode">
+                I should be rendered
+            </node>
+        </div>
+    </Imprint:Pattern>
+</Imprint>

@@ -1,0 +1,25 @@
+<Imprint xmlns:Imprint="Render://approach.corp">
+    <Imprint:Pattern name="locate" type="SQL">
+        
+SELECT [@ picks @]
+	<Render:IfTrue condition="[@ weight_aspects @]">
+	, (case
+		<Render:Loop source="[@ weight_aspects @]">
+			when [@ field @] [@ operator @] [@ value @] then [@ weight @]
+		</Render:Loop>
+		else 1
+		end), as calculated_priority
+	</Render:IfTrue>
+FROM [@ source @] 
+WHERE 
+		calculated_priority > 0
+		AND
+		(
+			<Render:If condition="[@ need @]">
+		)
+
+ORDER BY 
+	calculated_priority desc;
+
+    </Imprint:Pattern>
+</Imprint>
