@@ -52,7 +52,9 @@ const mode		= 5;
 
 class Resource extends RenderNode implements Stream
 {
-	protected Aspect $__selection;
+	protected array $__selection;
+
+	public array $tmp_parsed_url;
 
 	/**
 	 * @var array $source 
@@ -122,8 +124,44 @@ class Resource extends RenderNode implements Stream
 		?string $as			= null
 	):Resource|Stringable|string|nullstate
 	{
+		// Initialize values here so things don't persist between consecutive calls & failures
+		$this->tmp_parsed_url = array();
+		$tmp_parsed_url = array();
 
-		return nullstate::ambiguous;
+
+		// check protocl exists, and parse it
+		if(strpos($where, '://') === false){
+			return nullstate::ambiguous;
+		}
+
+		list($tmp_parsed_url['protocol'], $where) = explode('://', $where, 2);
+
+		if($tmp_parsed_url['protocol'] === '' || empty($where[0]) || $where[0] === '/'){
+			return nullstate::ambiguous;
+		}
+
+		if(strpos($where, '?') !== false){
+			list($where, $tmp_parsed_url['query_string']) = explode('?', $where, 2);
+
+			// parse_str stores the result in the second argument, and urldecodes automatically
+			// RFC 3986 section 3.4 doesn't elaborate much on query strings, but I will assume
+			// that this function follows the spec
+			parse_str($tmp_parsed_url['query_string'], $tmp_parsed_url['query_string']);
+		}else{
+			$tmp_parsed_url['query_string'] = [];
+		}
+
+		if(strpos($where, '/') === false){
+			$tmp_parsed_url['host'] = $where;
+			$tmp_parsed_url['parts'] = [];
+		}else{
+			list($tmp_parsed_url['host'], $where) = explode('/', $where, 2);
+			$tmp_parsed_url['parts'] = array_values(array_filter(explode('/', $where)));
+		}
+
+		$this->tmp_parsed_url = $tmp_parsed_url;
+
+		return $this;
 	}
 
 	public function sort(\Stringable|string|field|Aspect $by, bool $ascending = true){

@@ -82,12 +82,12 @@ class MariaDBCest
 		);
 
 		$this->server = new Server(
-			// host: 'database-01.system-00.suitespace.corp', //Scope::GetDeploy( deploy::resource ),
-			// user: 'tom',//Scope::GetDeploy( deploy::resource_user ),
-			// port: 3306,
-			pass: 'very $uper secret X10!',
-			database: 'MyHome',
-			label: 'MyData'
+			host: '127.0.0.1', //Scope::GetDeploy( deploy::resource ),
+			user: 'root',//Scope::GetDeploy( deploy::resource_user ),
+			port: 3306,
+			pass: '123456',
+			database: 'test',
+			label: 'test'
 		);
 
 	}

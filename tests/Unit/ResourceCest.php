@@ -7,12 +7,44 @@ use Tests\Support\UnitTester;
 
 use Approach\Scope;
 use Approach\path;
-use Approach\Resource;
+use Approach\Resource\Resource;
 use Approach\Service;
 
+/**
+ * 	This is a Codeception Unit Test for the Approach\Resource class.
+ * 
+ * 	@package    Approach\Tests\Unit
+ * 	@subpackage Approach\Tests\Unit\Resource
+ * 	@object     Approach\Tests\Unit\Resource\Resouce
+ * 
+ * 	@internal	
+ *		[ ] This class may be tested for functionality in the future.
+ * 		[ ] This class may be tested for security in the future.
+ * 		[ ] This class may be tested for documentation in the future.
+ * 		[ ] This class may be tested for performance in the future.
+ * 
+ * 
+ * 	@dependencies
+ * 		[ ] \Approach\Resource
+ * 		[ ] \Approach\Service
+ * 		[ ] \Approach\Scope
+ * 		[ ] \Approach\path
+ * 
+ * 	@license    Apache 2.0
+ * 	@version    0.0.1-alpha
+ * 	@since      2024-01-26
+ * 	@see        \Approach\Resource
+ * 
+ */
 
 class ResourceCest
 {
+	/**
+	 * @var \Approach\Resource
+	 * @var \Approach\Service
+	 * @var \Approach\Scope
+	 */
+
     private Scope $scope;
 
     public function _before(UnitTester $I)
@@ -29,6 +61,314 @@ class ResourceCest
             ],
         );
     }
+
+	// tests
+
+	public function emptyFind(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource
+		);
+
+		if(!($result instanceof \Approach\nullstate)){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result, \Approach\nullstate::ambiguous );
+	}
+
+	public function FindRelativePath(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('/');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource
+		);
+
+		if(!($result instanceof \Approach\nullstate)){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result, \Approach\nullstate::ambiguous );
+	}
+
+	public function FindNoProtocol(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('://');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource
+		);
+
+		if(!($result instanceof \Approach\nullstate)){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result, \Approach\nullstate::ambiguous );
+	}
+
+	public function FindProtocolOnly(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource
+		);
+
+		if(!($result instanceof \Approach\nullstate)){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result, \Approach\nullstate::ambiguous );
+	}
+
+	public function FindMinimumPass(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => [], 'query_string' => []) );
+	}
+
+	public function FindA(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/a');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a'], 'query_string' => []) );
+	}
+
+	public function FindAB(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/a/b');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a', 'b'], 'query_string' => []) );
+	}
+
+	public function FindABC(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/a/b/c');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a', 'b', 'c'], 'query_string' => []) );
+	}
+
+	public function FindATrailingSlash(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/a/');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a'], 'query_string' => []) );
+	}
+
+	public function FindABTrailingSlash(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/a/b/');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a', 'b'], 'query_string' => []) );
+	}
+
+	public function FindABCTrailingSlash(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/a/b/c/');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a', 'b', 'c'], 'query_string' => []) );
+	}
+
+	public function FindLotsOfSlashes1(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/a///////');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a'], 'query_string' => []) );
+	}
+
+	public function FindLotsOfSlashes2(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer///////////////////a///////');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a'], 'query_string' => []) );
+	}
+
+	public function FindLotsOfSlashes3(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://////////////////MyServer///////////////////a///////');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if(!($result instanceof \Approach\nullstate)){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result, \Approach\nullstate::ambiguous );
+	}
+
+	public function FindLotsOfSlashes4(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer//////////////////////////');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => [], 'query_string' => []) );
+	}
+
+	public function FindQyeryString1(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/?');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => [], 'query_string' => []) );
+	}
+
+	public function FindQyeryString2(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/?a=b');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => [], 'query_string' => ['a' => 'b']) );
+	}
+
+	public function FindQyeryString3(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/?a=b%20c');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => [], 'query_string' => ['a' => 'b c']) );
+	}
 
 }
 

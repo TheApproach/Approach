@@ -8,12 +8,22 @@ use \Approach\Resource\Aspect\aspects;
 
 class Aspect extends Node
 {
-	public readonly Render\Stream $parent;
-	public Render\Stream $ancestor;
+	public readonly ?Render\Stream $parent;
+	public ?Render\Stream $ancestor;
 
 	// public function __construct($filters, $operator)
-	public function __construct(public aspects $type, public $content=null, ?array ...$aspects, &$parent=Node::$null, Node &$ancestor = Node::$null)
+	public function __construct(public aspects $type, $content=null, ?array $aspects = array(), $parent = null, ?Node $ancestor = null)
 	{
+		if($parent === null){
+			$parent =& Node::$null;
+		}
+
+		if($ancestor === null){
+			$ancesotr =& Node::$null;
+		}
+
+		$this->content = $content;
+
 		$this->parent = $parent;
 		$this->ancestor = $ancestor == Node::$null ? $this : $ancestor;
 		foreach ($aspects as $aspect)
@@ -28,7 +38,7 @@ class Aspect extends Node
 			// Convert from parameter array to instance
 			if(is_array($aspect))
 			{
-				$aspect = new self(...$aspect, $this,ancestor: $this->ancestor);
+				$aspect = new self(...$aspect, parent: $this, ancestor: $this->ancestor);
 				$this->nodes[] = $aspect;
 			}
 
@@ -149,7 +159,7 @@ class Aspect extends Node
  * 
  */
 
- class operation extends Aspect{
+ class operation{
 	public static $method;										// method to be used to access the resource
 	public static $parameters;									// parameters that the operation accepts
 	public static $accepts;										// media type(s) that the operation can consume
@@ -183,7 +193,7 @@ class Aspect extends Node
  * 	
  */
 
- class quality extends Aspect
+ class quality
 {
 	public static $label;										// label for the quality
 	public static $description;									// description of the quality
@@ -207,7 +217,7 @@ class Aspect extends Node
  * 
  */
 
- class quantity extends Aspect
+ class quantity
 {
 	public static $label;										// label for the quantity
 	public static $description;									// description of the quantity
@@ -234,7 +244,7 @@ class Aspect extends Node
  * 
  */
 
-class map extends Aspect
+class map
 {
 	public static $type;										// type of the mapping (Token map, Settings map, Service map, etc.)
 	public static $label;										// label for the mapping
@@ -271,7 +281,7 @@ class map extends Aspect
  * 
  */
 
- class authorization extends Aspect
+ class authorization
 {
 	public static $label;										// label for the authorization
 	public static $description;									// description of the authorization
