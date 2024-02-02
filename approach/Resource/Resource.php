@@ -159,6 +159,299 @@ class Resource extends RenderNode implements Stream
 			$tmp_parsed_url['parts'] = array_values(array_filter(explode('/', $where)));
 		}
 
+		foreach($tmp_parsed_url['parts'] as $key => $part){
+			$parsed_part = [
+				'type' => null,
+				'criterias' => [],
+				'parsed_csv' => null,
+				'sub_delim_part' => null
+			];
+
+			// Get sub delim if present
+			if(strpos($part, ';') !== false){
+				list($part, $parsed_part['sub_delim_part']) = explode(';', $part, 2);
+			}
+
+			// if there is (...), parse the CSV input
+			$first_opening_parenthesis = strpos($part, '(');
+			if($first_opening_parenthesis !== false){
+				$length = strlen($part);
+
+				if($length < 2 || empty($part[$length-1]) || $part[$length-1] !== ')'){
+					return nullstate::ambiguous;
+				}
+
+				$parsed_part['parsed_csv'] = str_getcsv(substr($part, $first_opening_parhenthesis+1, $length - $first_opening_parenthesis - 1));
+				$part = substr($part, 0, $first_opening_parenthesis);
+
+				if($parsed_part['parsed_csv'] === [] || $parsed_part['parsed_csv'] === [null]){
+					return nullstate::ambiguous;
+				}
+			}
+
+			// If there is no [, there's nothing else to do
+			if(strpos($part, '[') === false){
+				if($parsed_part['parsed_csv'] !== null){
+					return nullstate::ambiguous;
+				}
+
+				$parsed_part['type'] = $part;
+				$tmp_parsed_url['parts'][$key] = $parsed_part;
+				continue;
+			}
+
+			// Otherwise, parse the [...] blocks
+			list($parsed_part['type'], $part) = explode('[', $part, 2);
+
+			// Since we removed the opening [, also remove the closing ]
+			if(substr($part, -1) !== ']'){
+				return nullstate::ambiguous;
+			}
+
+			$part = substr($part, 0, -1);
+
+			for(
+				$i = 0,
+				$part_max_length = strlen($part);
+
+				$part !== '';
+
+				$part = substr($part, $i),
+				$part_max_length = strlen($part),
+				$i = 0
+			){
+				// First, check if we're at the end of the criteria block
+				if($part[0] === ']'){
+					if($part_max_length === 1 || $part[1] !== '['){
+						return nullstate::ambiguous;
+					}
+
+					$parsed_part['criterias'][] = [
+						'type' => 'next_block',
+						'token' => ']['
+					];
+
+					$i += 2;
+
+					continue;
+				}
+
+				// Second, get through any white space
+				for(
+					;
+					$i < $part_max_length
+				 && match($part[$i]){
+						' ', "\r", "\n" => true,
+						default => false
+					};
+					$i++
+				);
+
+				if($i !== 0){
+					$parsed_part['criterias'][] = [
+						'type' => 'whitespace',
+						'token' => substr($part, 0, $i)
+					];
+
+					continue;
+				}
+
+				// Next, try to match a number
+				for(
+					;
+					$i < $part_max_length
+				 && $part[$i] >= '0'
+				 && $part[$i] <= '9'
+					;
+					$i++
+				);
+
+				if(
+					$i > 0
+				 && (
+						$i === $part_max_length
+					 || $part[$i] === ']'
+					 || $part[$i] === ','
+					)
+				){
+					$parsed_part['criterias'][] = [
+						'type' => 'int',
+						'token' => intval(substr($part, 0, $i))
+					];
+
+					continue;
+				}
+
+				// If the number ends with a - and $i is 2, maybe it's a date?
+				if(
+					$i === 2
+				 && $i + 10 <= $part_max_length
+				 && $part[2] === '-'
+				 && ($part[3] >= '0' && $part[3] <= '9')
+				 && ($part[4] >= '0' && $part[4] <= '9')
+				 && $part[5] === '-'
+				 && ($part[6] >= '0' && $part[6] <= '9')
+				 && ($part[7] >= '0' && $part[7] <= '9')
+				 && ($part[8] >= '0' && $part[8] <= '9')
+				 && ($part[9] >= '0' && $part[9] <= '9')
+				){
+					$parsed_part['criterias'][] = [
+						'type' => 'date',
+						'token' => substr($part, 0, 10)
+					];
+
+					$i = 10;
+					continue;
+				}
+
+				// If the number ends with a dot, maybe it's a range?
+				if(
+					$i > 0
+				 && $i !== $part_max_length
+				 && $part[$i] === '.'
+				 && $i + 2 <= $part_max_length
+				 && $part[$i+1] === '.'
+				){
+					$i += 2;
+
+					for(
+						;
+				 		$i < $part_max_length
+					 && $part[$i] >= '0'
+					 && $part[$i] <= '9'
+						;
+						$i++
+					);
+
+					$parsed_part['criterias'][] = [
+						'type' => 'range',
+						'token' => substr($part, 0, $i)
+					];
+
+					continue;
+				}
+
+				// If the number doesn't end with a ], assume it's part of an identifier?
+				for(
+					;
+				 	$i < $part_max_length
+				 && (
+					 	(
+							$part[$i] >= '0'
+						 && $part[$i] <= '9'
+						)
+					 || (
+							$part[$i] >= 'a'
+						 && $part[$i] <= 'z'
+					 )
+					 || (
+							$part[$i] >= 'A'
+						 && $part[$i] <= 'Z'
+					 )
+					 || $part[$i] === '_'
+					 || $part[$i] === '-'
+					 || $part[$i] === '.'
+				)
+					;
+					$i++
+				);
+
+				if($i !== 0){
+					$parsed_part['criterias'][] = [
+						'type' => 'identifier',
+						'token' => substr($part, 0, $i)
+					];
+
+					continue;
+				}
+
+				// match <= and >= and == and !=
+				if($part_max_length >= 2 && $part[1] === '='){
+					switch($part[0]){
+						case '>':
+							$parsed_part['criterias'][] = [
+								'type' => 'greater_equal_to',
+								'token' => '>='
+							];
+
+							$i += 2;
+							continue 2;
+
+						case '<':
+							$parsed_part['criterias'][] = [
+								'type' => 'less_equal_to',
+								'token' => '<='
+							];
+
+							$i += 2;
+							continue 2;
+
+						case '=':
+							$parsed_part['criterias'][] = [
+								'type' => 'equal_to',
+								'token' => '=='
+							];
+
+							$i += 2;
+							continue 2;
+
+						case '!':
+							$parsed_part['criterias'][] = [
+								'type' => 'not_equal_to',
+								'token' => '!='
+							];
+
+							$i += 2;
+							continue 2;
+					}
+				}
+
+				// Match , and : and < and >
+				switch($part[0]){
+					case ',':
+						$parsed_part['criterias'][] = [
+							'type' => 'comma',
+							'token' => ','
+						];
+
+						$i++;
+						continue 2;
+
+					case ':':
+						$parsed_part['criterias'][] = [
+							'type' => 'colon',
+							'token' => ':'
+						];
+
+						$i++;
+						continue 2;
+
+					case '>':
+						$parsed_part['criterias'][] = [
+							'type' => 'greater_than',
+							'token' => '>'
+						];
+
+						$i++;
+						continue 2;
+
+					case '<':
+						$parsed_part['criterias'][] = [
+							'type' => 'less_than',
+							'token' => '<'
+						];
+
+						$i++;
+						continue 2;
+				}
+
+				// Finally, if it's matched noething so far... It's probably a parsing error
+				return nullstate::ambiguous;
+			}
+
+			$tmp_parsed_url['parts'][$key] = $parsed_part;
+		}
+
 		$this->tmp_parsed_url = $tmp_parsed_url;
 
 		return $this;

@@ -163,7 +163,22 @@ class ResourceCest
 		}
 
 		// If $state was nullstate::defined, then the connection was successful.
-		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a'], 'query_string' => []) );
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					]
+				],
+				'query_string' => []
+			) 
+		);
 	}
 
 	public function FindAB(UnitTester $I)
@@ -180,7 +195,28 @@ class ResourceCest
 		}
 
 		// If $state was nullstate::defined, then the connection was successful.
-		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a', 'b'], 'query_string' => []) );
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					],
+					1 => [
+						'type' => 'b',
+						'criterias' => [],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					]
+				],
+				'query_string' => []
+			) 
+		);
 	}
 
 	public function FindABC(UnitTester $I)
@@ -197,7 +233,35 @@ class ResourceCest
 		}
 
 		// If $state was nullstate::defined, then the connection was successful.
-		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a', 'b', 'c'], 'query_string' => []) );
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					],
+					1 => [
+						'type' => 'b',
+						'criterias' => [],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					],
+					2 => [
+						'type' => 'c',
+						'criterias' => [],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					]
+
+				],
+				'query_string' => []
+			) 
+		);
 	}
 
 	public function FindATrailingSlash(UnitTester $I)
@@ -214,7 +278,22 @@ class ResourceCest
 		}
 
 		// If $state was nullstate::defined, then the connection was successful.
-		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a'], 'query_string' => []) );
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					]
+				],
+				'query_string' => []
+			) 
+		);
 	}
 
 	public function FindABTrailingSlash(UnitTester $I)
@@ -231,7 +310,28 @@ class ResourceCest
 		}
 
 		// If $state was nullstate::defined, then the connection was successful.
-		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a', 'b'], 'query_string' => []) );
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					],
+					1 => [
+						'type' => 'b',
+						'criterias' => [],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					]
+				],
+				'query_string' => []
+			) 
+		);
 	}
 
 	public function FindABCTrailingSlash(UnitTester $I)
@@ -248,7 +348,35 @@ class ResourceCest
 		}
 
 		// If $state was nullstate::defined, then the connection was successful.
-		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a', 'b', 'c'], 'query_string' => []) );
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					],
+					1 => [
+						'type' => 'b',
+						'criterias' => [],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					],
+					2 => [
+						'type' => 'c',
+						'criterias' => [],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					]
+
+				],
+				'query_string' => []
+			) 
+		);
 	}
 
 	public function FindLotsOfSlashes1(UnitTester $I)
@@ -265,7 +393,22 @@ class ResourceCest
 		}
 
 		// If $state was nullstate::defined, then the connection was successful.
-		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a'], 'query_string' => []) );
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					]
+				],
+				'query_string' => []
+			) 
+		);
 	}
 
 	public function FindLotsOfSlashes2(UnitTester $I)
@@ -282,7 +425,22 @@ class ResourceCest
 		}
 
 		// If $state was nullstate::defined, then the connection was successful.
-		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => ['a'], 'query_string' => []) );
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					]
+				],
+				'query_string' => []
+			) 
+		);
 	}
 
 	public function FindLotsOfSlashes3(UnitTester $I)
@@ -319,7 +477,7 @@ class ResourceCest
 		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => [], 'query_string' => []) );
 	}
 
-	public function FindQyeryString1(UnitTester $I)
+	public function FindQueryString1(UnitTester $I)
 	{
 		$result = (new Resource(''))->find('MariaDB://MyServer/?');
 
@@ -336,7 +494,7 @@ class ResourceCest
 		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => [], 'query_string' => []) );
 	}
 
-	public function FindQyeryString2(UnitTester $I)
+	public function FindQueryString2(UnitTester $I)
 	{
 		$result = (new Resource(''))->find('MariaDB://MyServer/?a=b');
 
@@ -353,7 +511,7 @@ class ResourceCest
 		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => [], 'query_string' => ['a' => 'b']) );
 	}
 
-	public function FindQyeryString3(UnitTester $I)
+	public function FindQueryString3(UnitTester $I)
 	{
 		$result = (new Resource(''))->find('MariaDB://MyServer/?a=b%20c');
 
@@ -369,6 +527,409 @@ class ResourceCest
 		// If $state was nullstate::defined, then the connection was successful.
 		$I->assertEquals( $result->tmp_parsed_url, array('protocol' => 'MariaDB', 'host' => 'MyServer',  'parts' => [], 'query_string' => ['a' => 'b c']) );
 	}
+
+	public function FindCriteriaCheck1(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/a[0]/b[100]/c[1000][0]/');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [
+							0 => [
+								'type' => 'int',
+								'token' => 0
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					],
+					1 => [
+						'type' => 'b',
+						'criterias' => [
+							0 => [
+								'type' => 'int',
+								'token' => 100
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					],
+					2 => [
+						'type' => 'c',
+						'criterias' => [
+							0 => [
+								'type' => 'int',
+								'token' => 1000
+							],
+							1 => [
+								'type' => 'next_block',
+								'token' => ']['
+							],
+							2 => [
+								'type' => 'int',
+								'token' => 0
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					]
+
+				],
+				'query_string' => []
+			) 
+		);
+	}
+
+	public function FindCriteriaCheck2(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/a[x]/b[x,y]/c[x,y,z]/');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [
+							0 => [
+								'type' => 'identifier',
+								'token' => 'x'
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					],
+					1 => [
+						'type' => 'b',
+						'criterias' => [
+							0 => [
+								'type' => 'identifier',
+								'token' => 'x'
+							],
+							1 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							2 => [
+								'type' => 'identifier',
+								'token' => 'y'
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					],
+					2 => [
+						'type' => 'c',
+						'criterias' => [
+							0 => [
+								'type' => 'identifier',
+								'token' => 'x'
+							],
+							1 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							2 => [
+								'type' => 'identifier',
+								'token' => 'y'
+							],
+							3 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							4 => [
+								'type' => 'identifier',
+								'token' => 'z'
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					]
+
+				],
+				'query_string' => []
+			) 
+		);
+	}
+
+	public function FindCriteriaCheck3(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/a[x: 1..2]/b[x>1,y < 2]/c[x == 01-01-1970][y != 0][z  <=5]/');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [
+							0 => [
+								'type' => 'identifier',
+								'token' => 'x'
+							],
+							1 => [
+								'type' => 'colon',
+								'token' => ':'
+							],
+							2 => [
+								'type' => 'whitespace',
+								'token' => ' '
+							],
+							3 => [
+								'type' => 'range',
+								'token' => '1..2'
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					],
+					1 => [
+						'type' => 'b',
+						'criterias' => [
+							0 => [
+								'type' => 'identifier',
+								'token' => 'x'
+							],
+							1 => [
+								'type' => 'greater_than',
+								'token' => '>'
+							],
+							2 => [
+								'type' => 'int',
+								'token' => 1
+							],
+							3 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							4 => [
+								'type' => 'identifier',
+								'token' => 'y'
+							],
+							5 => [
+								'type' => 'whitespace',
+								'token' => ' '
+							],
+							6 => [
+								'type' => 'less_than',
+								'token' => '<'
+							],
+							7 => [
+								'type' => 'whitespace',
+								'token' => ' '
+							],
+							8 => [
+								'type' => 'int',
+								'token' => 2
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					],
+					2 => [
+						'type' => 'c',
+						'criterias' => [
+							0 => [
+								'type' => 'identifier',
+								'token' => 'x'
+							],
+							1 => [
+								'type' => 'whitespace',
+								'token' => ' '
+							],
+							2 => [
+								'type' => 'equal_to',
+								'token' => '=='
+							],
+							3 => [
+								'type' => 'whitespace',
+								'token' => ' '
+							],
+							4 => [
+								'type' => 'date',
+								'token' => '01-01-1970'
+							],
+							5 => [
+								'type' => 'next_block',
+								'token' => ']['
+							],
+							6 => [
+								'type' => 'identifier',
+								'token' => 'y'
+							],
+							7 => [
+								'type' => 'whitespace',
+								'token' => ' '
+							],
+							8 => [
+								'type' => 'not_equal_to',
+								'token' => '!='
+							],
+							9 => [
+								'type' => 'whitespace',
+								'token' => ' '
+							],
+							10 => [
+								'type' => 'int',
+								'token' => 0
+							],
+							11 => [
+								'type' => 'next_block',
+								'token' => ']['
+							],
+							12 => [
+								'type' => 'identifier',
+								'token' => 'z'
+							],
+							13 => [
+								'type' => 'whitespace',
+								'token' => '  '
+							],
+							14 => [
+								'type' => 'less_equal_to',
+								'token' => '<='
+							],
+							15 => [
+								'type' => 'int',
+								'token' => 5
+							]
+
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => null
+					]
+
+				],
+				'query_string' => []
+			) 
+		);
+	}
+
+
+	public function FindCriteriaAndSubDelimCheck(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/a[x];a/b[x,y];whatever/c[x,y,z];/');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [
+							0 => [
+								'type' => 'identifier',
+								'token' => 'x'
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => 'a'
+					],
+					1 => [
+						'type' => 'b',
+						'criterias' => [
+							0 => [
+								'type' => 'identifier',
+								'token' => 'x'
+							],
+							1 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							2 => [
+								'type' => 'identifier',
+								'token' => 'y'
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => 'whatever'
+					],
+					2 => [
+						'type' => 'c',
+						'criterias' => [
+							0 => [
+								'type' => 'identifier',
+								'token' => 'x'
+							],
+							1 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							2 => [
+								'type' => 'identifier',
+								'token' => 'y'
+							],
+							3 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							4 => [
+								'type' => 'identifier',
+								'token' => 'z'
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => ''
+					]
+
+				],
+				'query_string' => []
+			) 
+		);
+	}
+
 
 }
 
