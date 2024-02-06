@@ -256,6 +256,22 @@ class Resource extends RenderNode implements Stream
 					continue;
 				}
 
+				// Next, try matching a string
+				if($part[$i] === '"' || $part[$i] === "'"){
+					$start_i = $i;
+
+					for($i++; $i < $part_max_length && $part[$i] !== $part[$start_i]; $i++);
+
+					$i++;
+
+					$parsed_part['criterias'][] = [
+						'type' => 'string',
+						'token' => substr($part, $start_i, $i)
+					];
+
+					continue;
+				}
+
 				// Next, try to match a number
 				for(
 					;

@@ -931,6 +931,317 @@ class ResourceCest
 	}
 
 
+	public function FindStringLiteral(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/a[x == "abc"];a/b[x=="abc",y == \'cba\'];whatever/c[x,y,z];/');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [
+							0 => [
+								'type' => 'identifier',
+								'token' => 'x'
+							],
+							1 => [
+								'type' => 'whitespace',
+								'token' => ' '
+							],
+							2 => [
+								'type' => 'equal_to',
+								'token' => '=='
+							],
+							3 => [
+								'type' => 'whitespace',
+								'token' => ' '
+							],
+							4 => [
+								'type' => 'string',
+								'token' => '"abc"'
+							]
+
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => 'a'
+					],
+					1 => [
+						'type' => 'b',
+						'criterias' => [
+							0 => [
+								'type' => 'identifier',
+								'token' => 'x'
+							],
+							1 => [
+								'type' => 'equal_to',
+								'token' => '=='
+							],
+							2 => [
+								'type' => 'string',
+								'token' => '"abc"'
+							],
+							3 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							4 => [
+								'type' => 'identifier',
+								'token' => 'y'
+							],
+							5 => [
+								'type' => 'whitespace',
+								'token' => ' '
+							],
+							6 => [
+								'type' => 'equal_to',
+								'token' => '=='
+							],
+							7 => [
+								'type' => 'whitespace',
+								'token' => ' '
+							],
+							8 => [
+								'type' => 'string',
+								'token' => "'cba'"
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => 'whatever'
+					],
+					2 => [
+						'type' => 'c',
+						'criterias' => [
+							0 => [
+								'type' => 'identifier',
+								'token' => 'x'
+							],
+							1 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							2 => [
+								'type' => 'identifier',
+								'token' => 'y'
+							],
+							3 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							4 => [
+								'type' => 'identifier',
+								'token' => 'z'
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => ''
+					]
+
+				],
+				'query_string' => []
+			) 
+		);
+	}
+
+	public function FindCheckComparisonOperators(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/a[a==0,b!=1,c<2,d>3,e<=4,f>=5]/');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [
+							0 => [
+								'type' => 'identifier',
+								'token' => 'a'
+							],
+							1 => [
+								'type' => 'equal_to',
+								'token' => '=='
+							],
+							2 => [
+								'type' => 'int',
+								'token' => '0'
+							],
+							3 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							4 => [
+								'type' => 'identifier',
+								'token' => 'b'
+							],
+							5 => [
+								'type' => 'not_equal_to',
+								'token' => '!='
+							],
+							6 => [
+								'type' => 'int',
+								'token' => '1'
+							],
+							7 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							8 => [
+								'type' => 'identifier',
+								'token' => 'c'
+							],
+							9 => [
+								'type' => 'less_than',
+								'token' => '<'
+							],
+							10 => [
+								'type' => 'int',
+								'token' => '2'
+							],
+							11 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							12 => [
+								'type' => 'identifier',
+								'token' => 'd'
+							],
+							13 => [
+								'type' => 'greater_than',
+								'token' => '>'
+							],
+							14 => [
+								'type' => 'int',
+								'token' => '3'
+							],
+							15 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							16 => [
+								'type' => 'identifier',
+								'token' => 'e'
+							],
+							17 => [
+								'type' => 'less_equal_to',
+								'token' => '<='
+							],
+							18 => [
+								'type' => 'int',
+								'token' => '4'
+							],
+							19 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							20 => [
+								'type' => 'identifier',
+								'token' => 'f'
+							],
+							21 => [
+								'type' => 'greater_equal_to',
+								'token' => '>='
+							],
+							22 => [
+								'type' => 'int',
+								'token' => '5'
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => null 
+					]
+				],
+				'query_string' => []
+			) 
+		);
+	}
+
+	public function FindCheckNumberIdentifiers(UnitTester $I)
+	{
+		$result = (new Resource(''))->find('MariaDB://MyServer/a[1==1,2==1]/');
+
+		$I->assertTrue(
+			$result instanceof \Approach\nullstate ||
+			$result instanceof \Approach\Resource\Resource
+		);
+
+		if($result instanceof \Approach\nullstate){
+			$I->outputError( 'Parsing empty URL was successful, should have failed' );
+		}
+
+		// If $state was nullstate::defined, then the connection was successful.
+		$I->assertEquals(
+			$result->tmp_parsed_url,
+			array(
+				'protocol' => 'MariaDB',
+				'host' => 'MyServer',
+				'parts' => [
+					0 => [
+						'type' => 'a',
+						'criterias' => [
+							0 => [
+								'type' => 'identifier',
+								'token' => '1'
+							],
+							1 => [
+								'type' => 'equal_to',
+								'token' => '=='
+							],
+							2 => [
+								'type' => 'int',
+								'token' => '1'
+							],
+							3 => [
+								'type' => 'comma',
+								'token' => ','
+							],
+							4 => [
+								'type' => 'identifier',
+								'token' => '2'
+							],
+							5 => [
+								'type' => 'equal_to',
+								'token' => '=='
+							],
+							6 => [
+								'type' => 'int',
+								'token' => '1'
+							]
+						],
+						'parsed_csv' => null,
+						'sub_delim_part' => null 
+					]
+				],
+				'query_string' => []
+			) 
+		);
+	}
+
 }
 
 
