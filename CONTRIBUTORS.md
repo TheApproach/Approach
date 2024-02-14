@@ -47,8 +47,8 @@ Thank you for your valuable contributions!
 
 
 New Contributor Template: (please copy/paste)
-- Full Name: 
-- GitHub Username: 
+- Full Name: Redis Madani
+- GitHub Username: RedisMadani
 - Email: 
 - Website (optional):
 
