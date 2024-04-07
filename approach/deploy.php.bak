@@ -38,7 +38,7 @@ enum deploy : int
             self::platform      => Scope::$context[context::deploy->value][$this->value] ??	$base_url,	// When hosting many sites, this is the platform's true base URL, whether remote or internal
 			self::resource      => Scope::$context[context::deploy->value][$this->value] ??	ini_get('mysqli.default_host') ?? 'data.root.my.home',
 			self::resource_user => Scope::$context[context::deploy->value][$this->value] ??	ini_get('mysqli.default_user') ?? 'myhome-resources',			
-			self::statics       => Scope::$context[context::deploy->value][$this->value] ??	'static.' . $base_url,
+            self::statics       => Scope::$context[context::deploy->value][$this->value] ??	'static.' . $base_url,
             self::services      => Scope::$context[context::deploy->value][$this->value] ??	'service.' . $base_url,
             self::statics_alias => Scope::$context[context::deploy->value][$this->value] ??	$base_url . '/__static',
             self::service_alias => Scope::$context[context::deploy->value][$this->value] ??	$base_url . '/__api',

@@ -39,11 +39,10 @@ class Scope
 	//public static $type_casters				= [ self::in =>[], self::out => [] ];
 	public static $actions					= [ self::in =>[], self::out => [] ];
 
-    // Standard properties
     public Render\Node $ErrorRenderable;
 	public $type;
     // public static $OutputStream;
-    public $streams = [];
+	public $streams = [];
 
     /*
     TODO: move to 

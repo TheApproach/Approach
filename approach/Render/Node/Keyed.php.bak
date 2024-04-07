@@ -18,12 +18,11 @@ class Keyed extends Node implements \ArrayAccess
 
 
     public function __construct(
-        public null|string|Stringable|Stream|Node|self $name =  null,
-        public $content = null
+        public null|string|Stringable|Stream|self $name =  null,
+        public null|string|Stringable|Stream|self $content = null
     )
     {
         $this->_keys[(string)$name] = $this;
-        $this->set_render_id();
     }
 
     public static function fromArray(array $dictionary)

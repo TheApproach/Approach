@@ -54,17 +54,14 @@ namespace Approach\Resource\MariaDB;
 use Approach\Render\Node;
 use Approach\Resource\Resource;
 use Approach\Resource\Aspect\operation;
+use Approach\Resource\Aspect\aspects;
 use Approach\Resource\MariaDB\Server;
 use Approach\runtime;
 use Approach\path;
 use Approach\Scope;
 
-
 class Database extends Resource
 {
-	// The database name
-	public string $database;
-
 	// The table list. Aggregates all tables in the database and their metadata
 	public array $tables = [];
 
@@ -85,11 +82,32 @@ class Database extends Resource
 
 	public function __construct(
 		public Server $server,
-		public string $db
+		public string $database
 	)
 	{
-		$this->database = $db;
 		$this->set_render_id();
+		foreach (get_class_vars(static::class) as $key => $value) {
+			if (!isset($this->{$key}) && defined(static::class . '::' . $key)) {
+				$this->{$key} = constant(static::class . '::' . $key);
+			}
+		}
+
+		// Get an instance of the server
+		if ($server instanceof \Approach\Resource\MariaDB\Server) {
+			$this->server = $server;
+		} else {
+			try {
+				$this->server = new $this->server_name;
+			} catch (\Throwable $e) {
+				try {
+					$this->server = Resource::find('MariaDB://' . $this->server_name );
+				} catch (\Throwable $e) {
+					throw new \Exception('Unable to create server instance');
+				}
+			}
+		}
+
+
 	}
 
 	/**
@@ -113,6 +131,9 @@ class Database extends Resource
 	 */	
 	public function GetTableList()
 	{
+		if($this->server->connection instanceof \Approach\nullstate ){
+			throw new \Exception('Server is not connected, nullstate::' . $this->server->connection->name);
+		}
 		//escape input
 		$database = $this->server->connection->real_escape_string($this->database);
 
@@ -270,27 +291,165 @@ class Database extends Resource
 		return $events;
 	}
 
+	public static function get_safe_table($name){
+		$safe_name = $name;
+
+		// Check for reserved words and characters unsafe for PHP class names
+		$reserved_words = ['', 'abstract', 'and', 'array', 'as', 'break', 'callable', 'case', 'catch', 'class', 'clone', 'const', 'continue', 'declare', 'default', 'die', 'do', 'echo', 'else', 'elseif', 'empty', 'enddeclare', 'endfor', 'endforeach', 'endif', 'endswitch', 'endwhile', 'eval', 'exit', 'extends', 'final', 'for', 'foreach', 'function', 'global', 'goto', 'if', 'implements', 'include', 'include_once', 'instanceof', 'insteadof', 'interface', 'isset', 'list', 'namespace', 'new', 'or', 'print', 'private', 'protected', 'public', 'require', 'require_once', 'return', 'static', 'switch', 'throw', 'trait', 'try', 'unset', 'use', 'var', 'while', 'xor'];
+		$unsafe_chars = [' ', '-', '.', ',', ';', ':', '*', '/', '\\', '|', '&', '^', '%', '$', '#', '@', '!', '?', '<', '>', '(', ')'];
+
+		if (in_array($name, $reserved_words)) {
+			$safe_name = '_' . $name;
+		}
+		if (in_array(substr($name, 0, 1), $unsafe_chars)) {
+			$safe_name = '_' . $name;
+		}
+
+		if (in_array($name, $reserved_words)) {
+			$safe_name = '_' . $name;
+		}
+		return $safe_name;
+	}
+
+
+	/**
+	 * Sanitizes a class name by removing any characters that are not a-z, A-Z, 0-9, or _.
+	 * If the first character is a number, it is also removed.
+	 *
+	 * @param string $className The class name to sanitize.
+	 * @return string The sanitized class name.
+	 */
+	function sanitize_class_name(string $className): string
+	{
+		$className = str_split($className);
+		foreach($className as $i => $char) {
+			$ascii = ord($char);
+			// If character is not a-z, A-Z, 0-9, or _, or if it's a number at the start of the string
+			if (!(($ascii >= 48 && $ascii <= 57 && $i != 0) || // 0-9 (not at start)
+				  ($ascii >= 65 && $ascii <= 90) || // A-Z
+				  ($ascii >= 97 && $ascii <= 122) || // a-z
+				  ($ascii == 95))) { // _
+				$className[$i] = '';
+			}
+		}
+		return implode('', $className);
+	}
+
 	// No FunctionList() method required as functions are included in ProcedureList()
 
 	/**
 	 * 	Discover the database
 	 */
-
 	public function discover()
 	{
-/*		// Discover the tables
+		$resource_root = Scope::GetPath(path::resource) . 'MariaDB/';
+		$resource_ns = Scope::$Active->project . '\\Resource\\MariaDB';
+		
+
+		$safe = ''; // We will use this to hold a safe version of $this->label
+
+		// Check if $this->label starts with 'p:' (persistent)
+		// If so, then remove it and set that result to $safe
+
+		// Remove characters that are invalid for class names for this->label
+		$safe = $this->sanitize_class_name($this->database);
+
+		$server_label = substr($this->server->label, 0, 2) == 'p:' ?
+			substr($this->server->label, 2) :
+			$this->server->label;
+
+		$server_safe = $this->sanitize_class_name($server_label);
+
+		$this->MintResourceClass(
+			path: $resource_root . '\\'. $server_safe.'\\'.$safe . '.php',
+			class: $resource_root . '\\'. $server_safe.'\\'. $safe,
+			extends: 'MariaDB\\Database',
+			namespace: $resource_ns . '\\' . $server_safe,
+			uses:		['\\Approach\\Resource\\MariaDB'],
+			constants: 	[
+				'NAME = \''. $this->database . '\'',
+				'DATABASE = \''. $this->database.'\'',
+				'SERVER_NAME = \''. $this->server->label. '\'',
+				'RESOURCE_PROTO = \'MariaDB\'',
+				'SERVER_CLASS = \''. $resource_ns . '\\' . $server_safe . '\'',
+				'RESOURCE_CLASS = \''. $resource_ns . '\'',
+				'CONNECTOR_CLASS = \'\\Approach\\Service\\MariaDB\\Connector'.'\'',
+			],
+			// properties: 	[],
+			// methods: 	[],
+		);
+
+
+		// Discover the tables
 		$tables = $this->GetTableList();
 		foreach ($tables as $table)
 		{
-			$this->nodes[$table['TABLE_NAME']] = new Table($this, $table['TABLE_NAME']);
-			// $this->nodes[$table['TABLE_NAME']]->discover();
+			// Get Classname for table
+			$table_safe = static::get_safe_table($table['TABLE_NAME']);
+			$classname = $resource_ns . '\\' . $server_safe . '\\' . $safe . '\\' . $table_safe;
+			
+			// Check if class exists
+			if( !class_exists($classname) )
+			{
+				// Create class
+				$this->MintResourceClass(
+					path: $resource_root . '\\' . $server_safe . '\\' . $safe .'\\'.$table_safe. '.php',
+					class: $resource_ns . '\\' . $server_safe . '\\' . $safe . '\\' . $table_safe,
+					extends: 'MariaDB\\Table',
+					namespace: $resource_ns . '\\' . $server_safe . '\\' . $safe,
+					uses: ['\\Approach\\Resource\\MariaDB'],
+					constants: 	[
+						'DATABASE_CLASS = \'\\'.$resource_ns . '\\' . $server_safe . '\\' . $safe.'\'',
+						'SERVER_CLASS = \'\\'.$resource_ns . '\\' . $server_safe . '\'',
+						'CONNECTOR_CLASS = \'\\Approach\\Service\\MariaDB\\Connector' . '\'',
+						'RESOURCE_CLASS = \'\\'. $resource_ns . '\'',
+						'DATABASE_NAME = \''.$this->database.'\'',
+						'SERVER_NAME = \''.$this->server->label.'\'',
+						'RESOURCE_PROTO = \''.'MariaDB'.'\'',
+						'NAME = \''.$table['TABLE_NAME'].'\'',
+						'COMMENT = \''.$table['TABLE_COMMENT'].'\'',
+						'ENGINE = \''.$table['ENGINE'].'\'',
+						'ROW_FORMAT = \''.$table['ROW_FORMAT'].'\'',
+						'TABLE_COLLATION = \''.$table['TABLE_COLLATION'].'\'',
+						'CREATE_OPTIONS = \''.$table['CREATE_OPTIONS'].'\'',
+						'TABLE_ROWS = \''.$table['TABLE_ROWS'].'\'',
+						'AVG_ROW_LENGTH = \''.$table['AVG_ROW_LENGTH'].'\'',
+						'DATA_LENGTH = \''.$table['DATA_LENGTH'].'\'',
+						'MAX_DATA_LENGTH = \''.$table['MAX_DATA_LENGTH'].'\'',
+						'INDEX_LENGTH = \''.$table['INDEX_LENGTH'].'\'',
+						'DATA_FREE = \''.$table['DATA_FREE'].'\'',
+						'AUTO_INCREMENT = \''.$table['AUTO_INCREMENT'].'\'',
+						'CREATE_TIME = \''.$table['CREATE_TIME'].'\'',
+						'UPDATE_TIME = \''.$table['UPDATE_TIME'].'\'',
+						'CHECK_TIME = \''.$table['CHECK_TIME'].'\'',
+						'CHECKSUM = \''.$table['CHECKSUM'].'\'',
+						'TABLE_COMMENT = \''.$table['TABLE_COMMENT'].'\'',
+					],
+					// properties: 	[],
+					// methods: 	[],
+				);
+			}
+
+			// Composer's autoloader does not know about the new class yet, so we will include it here
+			require_once $resource_root . '\\' . $server_safe . '\\' . $safe .'\\'.$table_safe. '.php';
+
+			static::__update_composer_autoloader(
+				resource_root: $resource_root, 
+				resource_class: 'MariaDB' . '\\' . $server_safe . '\\' . $safe .'\\'.$table_safe,
+			);
+
+
+			$this->nodes[$table_safe] = new $classname(name:  $table['TABLE_NAME'], database: $this);
+			$this->nodes[$table_safe]->discover();
 		}
 
+		/*
+		// Under here is not required for AvenuePad or SuiteUX so far
 		// Discover the views
 		$views = $this->GetViewList();
 		foreach ($views as $view)
 		{
-			$this->nodes[$view['TABLE_NAME']] = new View($this, $view['TABLE_NAME']);
+			$this->nodes[$view['TABLE_NAME']] = new Table($this, $view['TABLE_NAME']);
 			$this->nodes[$view['TABLE_NAME']]->discover();
 		}
 
@@ -305,7 +464,7 @@ class Database extends Resource
 			// ACTION_REFERENCE_OLD_ROW, ACTION_REFERENCE_NEW_ROW, CREATED, SQL_MODE, DEFINER, 
 			
 			//Describe Trigger as an operation
-			$operation = new operation(aspects::container, $this);
+			$operation = new operation(parent: $this);
 			$operation->name = $trigger['TRIGGER_NAME'];
 			$operation->description = $trigger['ACTION_STATEMENT'];
 			$operation->signature = [];
@@ -320,30 +479,8 @@ class Database extends Resource
 
 			$this->triggers[$trigger['TRIGGER_NAME']] = $operation;
 		}
+		*/
 
-		$resource_root = Scope::GetPath(path::resource);
-		$safe =''; // We will use this to hold a safe version of $this->label
-		
-		// Check if $this->label starts with 'p:' (persistent)
-		// If so, then remove it and set that result to $safe
-		$safe = substr($this->label, 0, 2) == 'p:' ?
-		substr($this->label, 2) :
-		$safe = $this->label;
-		
-		// Remove characters that are invalid for class names for this->label
-		$safe = preg_replace('/[^a-zA-Z0-9_]/', '', $safe);
-
-		$this->MintResourceClass(
-			path: $resource_root.$safe.'.php',
-			class: Scope::$Active->project.'\\Resource\\'. $safe,
-			extends: static::class,
-			namespace: Scope::$Active->project.'\\Resource\\',
-			uses: [],
-			// constants: [],
-			// properties: [],
-			// methods: [],
-		);
-        */
 	}
 
 	

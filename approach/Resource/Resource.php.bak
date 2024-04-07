@@ -17,13 +17,10 @@ namespace Approach\Resource;
 
 use \Approach\nullstate;
 use \Approach\Resource\Aspect\aspects;
-use \Approach\path;
-use \Approach\Resource\Aspect\discover;
 use \Approach\Resource\Aspect\Aspect;
 use \Approach\Resource\Aspect\location;
 use \Approach\Resource\Aspect\operation;
 use \Approach\Resource\Aspect\field;
-use \Approach\Scope;
 
 use \Approach\Render\Stream;
 use \Approach\Render\Node as RenderNode;

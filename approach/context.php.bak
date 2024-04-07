@@ -12,7 +12,6 @@ enum context: int
     case schema = 5;
     case scope = 6;
     case type = 7;
-    case stream = 8;
+    case tree = 8;
     case process = 9;
-    case tree = 10;
 }

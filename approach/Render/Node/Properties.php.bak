@@ -112,9 +112,8 @@ trait Properties
 	public function full_copyInto(&$into)
     {
         $this->shallow_copyInto($into);
-
-        for ($i = 0, $L = count($this->nodes); $i < $L; ++$i)    //Cascade
-            $this->children[$i]->copyInto($into->nodes[$i]);
+        for ($i = 0, $L = count($this->children); $i < $L; ++$i)    //Cascade
+            $this->children[$i]->copyInto($into->children[$i]);
     }
 
     /**

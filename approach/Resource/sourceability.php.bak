@@ -9,6 +9,8 @@ use \Stringable;
 
 trait sourceability
 {
+
+	public static self $acquired = [];
 	abstract public static function aquire(Stringable|string|Node $where): ?Node;
 	abstract public static function pull(Stringable|string|Node $where): ?Node;
 	abstract public static function load(Stringable|string|Node $where): ?Node;

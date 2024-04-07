@@ -59,51 +59,14 @@ namespace Approach\Render;
 
 use \Approach\nullstate as nullstate;
 use \Approach\Render\Stream;
-use \Approach\Scope;
 use \Traversable;
 use \Stringable;
 
 class Container extends \ArrayObject implements Stream
 {
-	protected static $_render_streams = [];
-	private array $_labeled_nodes = [];
-	private array $_node_labels = [];
-
-
-	/**
-	 * An array of Node objects that are linked to the Node object.
-	 * Generally, these are nodes that are children of the Node object.
-	 * 
-	 * In Approach\Render\Attributes, all Attribute objects are treated as the same level.
-	 * Since nodes may also be references to elsewhere in the currently loaded Node tree(s),
-	 * graph structures can be created. This is useful for creating hyperlinks.
-	 * 
-	 * A concrete example of this is the Resource Protocol, which uses this to create
-	 * hyperlinks to other nodes. For example, the following Resource Protocol URL:
-	 * 
-	 * MariaDB://localhost/MyDatabase/MyTable[MyColumn,MyColumn2:0..10,MyColumn3,$5:MyColumn>1][0..50];MyColumn3 desc,MyColumn2 asc/0..10
-	 * 
-	 * Is used to translate to the following Node tree:
-	 * 
-	 * Service\MariaDB\Connector - Protocol Root
-	 *     - Resource\MariaDB\Server @ localhost
-	 *       - Resource\MariaDB\Database @ MyDatabase
-	 *        - Resource\MariaDB\Table @ MyTable
-	 *          - Table->pick(MyTable\fields::MyColumn)     // adds a node to the $table->pick[]
-	 *          - Table->pick(MyTable\fields::MyColumn2)
-	 *          - Table->pick(MyTable\fields::MyColumn3)
-	 *          - Table->sift( mode: MariaDB\sift::range, [  MyTable\fields::MyColumn2, 0, 10] )
-	 *          - Table->weight( what: MyTable\field::Column0, operator: operator::GREATER_THAN, value: 1, weight: 5 )
-	 *          - Table->divide( block_index: 0, block_size: 50 )
-	 *          - Table->sort( MyTable\fields::MyColumn3, MariaDB\sort::DESCENDING )
-	 *          - Table->sort( MyTable\fields::MyColumn2, MariaDB\sort::ASCENDING )
-	 * 
-	 * The Node tree is then rendered into a SQL query.
-	 *
-	 * All elements in $nodes are of type Node, or a subclass of Node.
-	 * 
-	 * @var Node[] An array of Nodes.
-	 */
+	private array $_labeled_nodes = [];	
+	private array $_node_labels = [];	
+	
 	public $nodes = [];
 	use Streamability;
 
@@ -138,33 +101,18 @@ class Container extends \ArrayObject implements Stream
 	 * @return The `render()` method returns a string that is the concatenation of the results of
 	 * calling the `RenderHead()`, `RenderCorpus()`, and `RenderTail()` methods.
 	 */
-	public function render()
+	public function render() : \Stringable|string|Stream
 	{
-		$render = '';
-		foreach ($this->stream() as $r)
-			$render .= $r;
-
-		return $render;
-	}
-
-	/**
-	 * This function does the same as render(), using yield instead of concatenation.
-	 */
-	public function stream()
-	{
-		// $stream = Scope::$Active->GetOutputStream();	// usually the result of fopen('php://output', 'w')
+		$output = '';
 		foreach ($this->RenderHead() as $r)
-			yield $r;
+			$output .= $r;
 		foreach ($this->RenderCorpus() as $r)
-			yield $r;
+			$output .= $r;
 		foreach ($this->RenderTail() as $r)
-			yield $r;
+			$output .= $r;
+
+		return $output;
 	}
-
-
-	/**
-	 * This function renders the head of a Node tree.
-	 */
 
 	public function RenderHead(): Traversable|\Approach\Render\Stream|string|\Stringable
 	{
@@ -180,12 +128,16 @@ class Container extends \ArrayObject implements Stream
 	{
 		if (isset($this->content))
 			yield $this->content;
-		
-		foreach ($this->nodes as $n) {
-			yield from $n->stream();
-			// $n->prerender = true;
+		if (isset($this->prerender) && !$this->prerender)
+		{
+			foreach ($this->nodes as $n)
+			{
+				yield from $n->RenderHead();
+				yield from $n->RenderCorpus();
+				yield from $n->RenderTail();
+				// $n->prerender = true;
+			}
 		}
-	
 	}
 
 	/**
@@ -194,6 +146,6 @@ class Container extends \ArrayObject implements Stream
 
 	public function RenderTail(): Traversable|\Approach\Render\Stream|string|\Stringable
 	{
-		yield '';
+		yield null;
 	}
 }

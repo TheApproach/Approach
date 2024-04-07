@@ -58,7 +58,7 @@ class Source extends Resource{
 		
 		while($row = $this->database->fetch()){
 			
-			$this->addTable($row['TABLE_NAME']);
+			#$this->addTable($row['TABLE_NAME']);
 		}
 	}
 	
@@ -76,7 +76,7 @@ class Source extends Resource{
 		
 		while($row = $this->database->fetch()){
 			
-			$this->addView($row['TABLE_NAME']);
+			#$this->addView($row['TABLE_NAME']);
 		}
 	}
 	
@@ -93,26 +93,7 @@ class Source extends Resource{
 		$this->database->execute([$this->name]);
 		
 		while($row = $this->database->fetch()){
-			
-			$this->addProcedure($row['ROUTINE_NAME']);
+			#$this->addProcedure($row['ROUTINE_NAME']);
 		}
-	}
-	
-	/**
-	 * Add a table to the resource.
-	 * 
-	 * @param string $name
-	 * @return void
-	 * @throws Exception
-	 */
-	protected function addTable($name){
-		
-		$this->addResource('Table', $name);
-	}
-	
-	/**
-	 * Add a view to the resource.
-	 * 
-	 * @param string $name
-	 *	
+	}	
 }

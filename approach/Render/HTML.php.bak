@@ -83,7 +83,7 @@ class HTML extends XML
         public null|string|Stringable $id = null,
 		null|string|array|Node|Attribute $classes = null,
         public null|array|Attribute $attributes = new Attribute,
-        public $content = null,
+        public null|string|Stringable|Stream|self $content = null,
         public array $styles = [],
         public bool $prerender = false,
         public bool $selfContained = false,

@@ -140,42 +140,8 @@ class Service extends Branch
 
     public function connect($register_connection = true)
     {
-		$isTransferMode = false;
-		$hasRequestPayload = false;
-		$useFormattedPayload = false;
-		$requestData = [];
-
-		// If the input is a transfer target, then the input is a file path or a URL
-		if ($this->target_in == target::transfer) {
-			$isTransferMode = true;
-		}
-
-		// Check if request data is available 
-		if(!empty($_REQUEST)){
-			$hasRequestPayload = true;
-			
-			// $format_name = strtolower($_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? $_SERVER['HTTP_ACCEPT'] ?? '');
-			$format = strtolower( $this->format_in->name );
-			// Prioritized set of request data
-			$requestData = empty($_REQUEST[$this->format_in->name]) ? 				// Fallback 1: no $_REQUEST[$this->format_in->name]
-								( empty($_REQUEST[$format]) ? 						// Fallback 2: no lowercased key
-									$_REQUEST			 							// Fallback 3: use $_REQUEST final fallback
-									:	 											
-									$_REQUEST[$format]								// Use Fallback 2
-									
-								) 
-								:
-								$_REQUEST[$this->format_in->name]					// Use 1st pick
-							;
-		}
-
-		// If the input is a transfer target, and we have request data, it is a better fallback than STDIN
-		if($isTransferMode && $hasRequestPayload){
-			$useFormattedPayload = true;
-		}
-
-        $this->input = $this->input ?? ($useFormattedPayload ? $requestData :  static::STDIN );
-        $this->output = $this->output ?? static::STDOUT;
+        $this->input = $this->input ?? Service::STDIN;
+        $this->output = $this->output ?? Service::STDOUT;
 
         // Normalize the input to an array, placing single values in the first index of the array
         if (!is_array($this->input)) {

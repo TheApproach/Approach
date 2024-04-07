@@ -168,18 +168,6 @@ trait Streamability
 }
 
 /*
-
-abstract class selectable{
-	const index = 0;
-	const pick = 1;	 // properties selected by name
-	const sift = 2;	 // various ways of describing rejection criteria as arrays to unpack for comparison or registered operations
-						// in URL form: proto://root/path[field:20..30,field2:~"regex",field3:"apple|orange|banana"]
-	const weigh = 3;	// each sift may assign a weight to passing nodes
-	const operate = 4;  // operations may be current_namespace/method(), $this->method() or static::class::method($this,...$params)
-	const property = 5; // an embedded property of the syntax node.property
-	const accessor = 6; // a property of the node that changes $node to $node = static::access($node,$accessor)
-}
-
 use \Approach\Scope;
 use \Approach\context;
     

@@ -19,7 +19,7 @@ trait Associative
      */
     public function add($name, $content): self
     {
-        $self = new (static::class)($name, $content);
+        $self = new (self::class)($name, $content);
 
         $this->nodes[] = $self;
         $this->_keys[(string)$name] = &$self;

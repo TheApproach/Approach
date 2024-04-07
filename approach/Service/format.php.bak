@@ -42,5 +42,4 @@ enum format: int
     case ask = 41;
     case default = 42;
     case custom = 43;
-	case mysql = 44;
 }

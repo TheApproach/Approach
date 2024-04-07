@@ -32,7 +32,6 @@
 namespace Approach\Render;
 use \Approach\nullstate as nullstate;
 use \Approach\Render\Stream;
-use Approach\Scope;
 use \Stringable;
 
 /*
@@ -55,32 +54,18 @@ use \Stringable;
 
 */
 
-
-
-
-
-
 class Node extends Container
 {
-	// private array $_labeled_nodes = [];	
-	// private array $_node_labels = [];	
-
-	/**
-	 * An array of Nodes that are linked to $this Node.
-	 * Generally, children of $this - unless using a specialized climb.
-	 * Occassionally, elements of $nodes[] may link to other nodes in the tree structure or
-	 * treat $nodes[] as siblings, ancestors, hashes, etc.
-	 * 
-	 * @var Node[] $nodes 
-	 */
+	private array $_labeled_nodes = [];	
+	private array $_node_labels = [];	
 	
 	public $nodes = [];
 	public static Node $null;
-
+	
 	use Node\Properties;
 	use Streamability;
 
-	public function __construct(public $content = null, public bool $prerender = false )
+	public function __construct(public null|string|Stringable|Stream $content = null, public bool $prerender = false )
 	{
         $this->set_render_id();
 	}
@@ -140,4 +125,3 @@ class Node extends Container
 		return nullstate::null;
 	}
 }
-// Node::__static_init() called by Scope::__static_init()

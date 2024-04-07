@@ -77,6 +77,26 @@ trait connectivity
 		return $state;
 	}
 
+	/**
+	 * Register a connection as a Service protocol handler
+	 * - Allows for multiple connections to the same server
+	 * 		* Limits the number of connections to the same server
+	 * 		* Accepts a connection alias
+	 * 		* Helps share connections between downstream Services and Resources
+	 * - Defines a root connection for the Service type
+	 * 		* Creates a node tree which cuts through types and instances
+	 * 		* For example, a Service type can have a root connection to a database and a child connection to a table
+	 * 		* Each protocol root is filled recursively with container types that drill-down and connect to the same server
+	 * 
+	 * 			* MariaDB://localhost/MyDatabase/MyTable becomes Service::$protocol[MariaDB][localhost][MyDatabase][MyTable]
+	 * 					Service::$protocol --> Render\Node
+	 * 					Service::$protocol[MariaDB] --> Service\Service
+	 * 					Service::$protocol[MariaDB][localhost] --> Resource\MariaDB\Server
+	 * 					Service::$protocol[MariaDB][localhost][MyDatabase] --> Resource\MariaDB\Database
+	 * 					Service::$protocol[MariaDB][localhost][MyDatabase][MyTable] --> Resource\MariaDB\Table
+	 * 
+	 * 
+	 */
 	public function register_connection($server=null)
 	{
 		$proto = static::getProtocol();

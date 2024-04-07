@@ -44,8 +44,7 @@ trait Properties
             $this->before .
             '<' .
             $this->tag .
-			(!empty($this->id) ? ' id="' .$this->id.'"' : '') .
-            (count($this->classes->nodes) > 0 ? ' class="' .$this->classes.'"' : '') .
+			(count($this->classes->nodes) > 0 ? ' class="' .$this->classes.'"' : '') .
             $this->attributes .
             $this->BuildStyles() .
             ($this->selfContained ?            //prefix and suffix don't really make sense on  self-contained elements
