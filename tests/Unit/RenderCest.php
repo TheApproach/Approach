@@ -9,6 +9,7 @@ namespace Tests\Unit;
 
 use Tests\Support\UnitTester;
 use \Approach\Render;
+use \Approach\Render\Node;
 use \Approach\Render\ANTLR\ANTLR;
 use \Approach\Render\ANTLR\Sequence;
 use \Approach\Render\ANTLR\Token;
@@ -40,6 +41,22 @@ class RenderCest
         $node = new Render\Node\Keyed();
         $I->assertInstanceOf(Render\Node\Keyed::class, $node);
     }
+	
+	public function testNodeLabels(UnitTester $I){
+		$node = new Node();
+		$node->content = 'hello';
+		$node['A'] = new Node(content: ' world');
+		$node['B'] = new Node(content: '!');
+
+		$I->assertEquals('hello world!', $node->render());
+
+		$new = new Node('goodbye');
+		$new['A'] = clone $node['A'];
+
+		$I->assertEquals('goodbye world', $new->render());
+		// what is it working???? what!!! lol
+
+	}
 
     public function createHTML(UnitTester $I)
     {
@@ -47,6 +64,11 @@ class RenderCest
         // $html->SkipRenderCascade = true;
         $I->assertInstanceOf(Render\HTML::class, $html);
 
+		Render\Node\Keyed::$segmentation_phrase    = ' ';
+		Render\Node\Keyed::$associative_phrase     = '=';
+		Render\Node\Keyed::$encapsulating_phrase   = '"';
+		Render\Node\Keyed::$chaining_phrase        = ''; 
+		
         $head = new Render\HTML(tag: 'head');
         $body = new Render\HTML(tag: 'body', classes: ['renderable_2']);
         $div = new Render\HTML(tag: 'div', classes: ['renderable_3'], content: 'Hello World!');
