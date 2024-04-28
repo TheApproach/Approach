@@ -106,8 +106,6 @@ class Database extends Resource
 				}
 			}
 		}
-
-
 	}
 
 	/**
@@ -342,17 +340,17 @@ class Database extends Resource
 	 */
 	public function discover()
 	{
-		$resource_root = Scope::GetPath(path::resource) . 'MariaDB/';
+		$resource_root = Scope::GetPath(path::resource) . 'MariaDB' . DIRECTORY_SEPARATOR;
 		$resource_ns = Scope::$Active->project . '\\Resource\\MariaDB';
 		
 
-		$safe = ''; // We will use this to hold a safe version of $this->label
+		$safe_database_name = ''; // We will use this to hold a safe version of $this->label
 
 		// Check if $this->label starts with 'p:' (persistent)
-		// If so, then remove it and set that result to $safe
+		// If so, then remove it and set that result to $safe_database_name
 
 		// Remove characters that are invalid for class names for this->label
-		$safe = $this->sanitize_class_name($this->database);
+		$safe_database_name = $this->sanitize_class_name($this->database);
 
 		$server_label = substr($this->server->label, 0, 2) == 'p:' ?
 			substr($this->server->label, 2) :
@@ -361,8 +359,8 @@ class Database extends Resource
 		$server_safe = $this->sanitize_class_name($server_label);
 
 		$this->MintResourceClass(
-			path: $resource_root . '\\'. $server_safe.'\\'.$safe . '.php',
-			class: $resource_root . '\\'. $server_safe.'\\'. $safe,
+			path: $resource_root . DIRECTORY_SEPARATOR . $server_safe. DIRECTORY_SEPARATOR . $safe_database_name . '.php',
+			class: $resource_root . '\\'. $server_safe.'\\'. $safe_database_name,
 			extends: 'MariaDB\\Database',
 			namespace: $resource_ns . '\\' . $server_safe,
 			uses:		['\\Approach\\Resource\\MariaDB'],
@@ -386,20 +384,20 @@ class Database extends Resource
 		{
 			// Get Classname for table
 			$table_safe = static::get_safe_table($table['TABLE_NAME']);
-			$classname = $resource_ns . '\\' . $server_safe . '\\' . $safe . '\\' . $table_safe;
+			$classname = $resource_ns . '\\' . $server_safe . '\\' . $safe_database_name . '\\' . $table_safe;
 			
 			// Check if class exists
 			if( !class_exists($classname) )
 			{
 				// Create class
 				$this->MintResourceClass(
-					path: $resource_root . '\\' . $server_safe . '\\' . $safe .'\\'.$table_safe. '.php',
-					class: $resource_ns . '\\' . $server_safe . '\\' . $safe . '\\' . $table_safe,
+					path: $resource_root . DIRECTORY_SEPARATOR . $server_safe . DIRECTORY_SEPARATOR . $safe_database_name . DIRECTORY_SEPARATOR . $table_safe. '.php',
+					class: $resource_ns . '\\' . $server_safe . '\\' . $safe_database_name . '\\' . $table_safe,
 					extends: 'MariaDB\\Table',
-					namespace: $resource_ns . '\\' . $server_safe . '\\' . $safe,
+					namespace: $resource_ns . '\\' . $server_safe . '\\' . $safe_database_name,
 					uses: ['\\Approach\\Resource\\MariaDB'],
 					constants: 	[
-						'DATABASE_CLASS = \'\\'.$resource_ns . '\\' . $server_safe . '\\' . $safe.'\'',
+						'DATABASE_CLASS = \'\\'.$resource_ns . '\\' . $server_safe . '\\' . $safe_database_name.'\'',
 						'SERVER_CLASS = \'\\'.$resource_ns . '\\' . $server_safe . '\'',
 						'CONNECTOR_CLASS = \'\\Approach\\Service\\MariaDB\\Connector' . '\'',
 						'RESOURCE_CLASS = \'\\'. $resource_ns . '\'',
@@ -431,13 +429,17 @@ class Database extends Resource
 			}
 
 			// Composer's autoloader does not know about the new class yet, so we will include it here
-			require_once $resource_root . '\\' . $server_safe . '\\' . $safe .'\\'.$table_safe. '.php';
-
 			static::__update_composer_autoloader(
-				resource_root: $resource_root, 
-				resource_class: 'MariaDB' . '\\' . $server_safe . '\\' . $safe .'\\'.$table_safe,
+				resource_root: NULL,
+				resource_class: 'MariaDB' . '\\' . $server_safe . '\\' . $safe_database_name .'\\'.$table_safe,
 			);
 
+			static::__update_composer_autoloader(
+				resource_root: NULL,
+				resource_class: 'MariaDB' . '\\' . $server_safe . '\\' . $safe_database_name .'\\'.$table_safe.'_user_trait',
+			);
+
+			require_once $resource_root . DIRECTORY_SEPARATOR . $server_safe . DIRECTORY_SEPARATOR . $safe_database_name . DIRECTORY_SEPARATOR . $table_safe . '.php';
 
 			$this->nodes[$table_safe] = new $classname(name:  $table['TABLE_NAME'], database: $this);
 			$this->nodes[$table_safe]->discover();

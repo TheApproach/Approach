@@ -489,7 +489,7 @@ class Server extends Resource
 	 */
 	public function discover(){
 
-		$resource_root = Scope::GetPath(path::resource).'MariaDB/';
+		$resource_root = Scope::GetPath(path::resource).'MariaDB' . DIRECTORY_SEPARATOR;
 		$resource_ns = Scope::$Active->project . '\\Resource\\MariaDB\\';
 		$safe =''; // We will use this to hold a safe version of $this->label
 		
@@ -630,7 +630,7 @@ CLASS;
 
 		$file_dir = dirname($path);
 		// Make sure the path/ and path/user_trait.php exist
-		if (!file_exists($file_dir)) mkdir($file_dir, 0660, true);
+		if (!file_exists($file_dir)) mkdir($file_dir, 0770, true);
 		if (!file_exists($file_dir . '/' . $class . '_user_trait.php')) {
 			$user_trait =
 			'<?php
@@ -663,7 +663,7 @@ trait ' . $class . '_user_trait
 	 */
 }';
 
-			$file = fopen($file_dir . '/' . $class . '_user_trait.php', 'w');
+			$file = fopen($file_dir . DIRECTORY_SEPARATOR . $class . '_user_trait.php', 'w');
 			fwrite($file, $user_trait);
 			fclose($file);
 		}
@@ -676,7 +676,7 @@ trait ' . $class . '_user_trait
 		// Create the directory if it doesn't exist
 		$dir = dirname($path);
 		if (!is_dir( $dir )){
-			mkdir($dir, 0660, true);
+			mkdir($dir, 0770, true);
 		}
 
 		echo PHP_EOL.'Creating class file: '.$path.PHP_EOL;
