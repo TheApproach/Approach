@@ -99,6 +99,7 @@ class Resource extends RenderNode implements Stream
 		$this->__approach_resource_context['sift']		= ($sift 	?? new Container() );
 		$this->__approach_resource_context['divide']	= ($divide ?? new Container() );
 		$this->__approach_resource_context['filter']	= ($filter ?? new Container() );
+	}
 
 	public function define(){
 		
@@ -592,7 +593,7 @@ class Resource extends RenderNode implements Stream
             $file_dir = dirname($path);
 
             // Make sure the path/ and path/user_trait.php exist
-            if (!file_exists($file_dir)) mkdir($file_dir, 0660, true);
+            if (!file_exists($file_dir)) mkdir($file_dir, 0770, true);
             if (!file_exists($file_dir . '/'.$class.'_user_trait.php')) {
                 $user_trait = 
 '<?php
@@ -826,7 +827,7 @@ trait '.$class.'_user_trait
 		if ($is_windows) $aspect_directory = str_replace('/', '\\', $aspect_directory);
 
 		// Make sure the path exists, recursively
-		if (!file_exists($aspect_directory)) mkdir($aspect_directory, 0660, true);
+		if (!file_exists($aspect_directory)) mkdir($aspect_directory, 0770, true);
 		
 		return $aspect_directory;
 	}
@@ -848,10 +849,13 @@ trait '.$class.'_user_trait
 		$classname = $resource_ns . '\\' . $resource_class;
 
 		spl_autoload_register(function ($classname) use ($resource_root, $resource_class) {
+			global $spl_counter;
 			$resource_class = str_replace('\\', '/', $resource_class);
 			$resource_class = $resource_root . '/' . $resource_class . '.php';
-			if (file_exists($resource_class)) 
+
+			if (file_exists($resource_class)) {
 				require_once $resource_class;
+			}
 		});
 	}
 }

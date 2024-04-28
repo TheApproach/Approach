@@ -89,7 +89,6 @@ class MariaDBCest
 			database: 'MyHome',
 			label: 'MyData'
 		);
-
 	}
 
 	public function _after()
