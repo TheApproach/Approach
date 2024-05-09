@@ -3,10 +3,11 @@
 namespace Approach\Resource\Aspect;
 
 use \Approach\Render;
+use \Approach\Render\Node;
 use \Approach\Render\Container;
 use \Approach\Resource\Aspect\aspects;
 use \Approach\Resource\Resource;
-
+use Stringable;
 
 class Aspect extends Container
 {
@@ -21,7 +22,7 @@ class Aspect extends Container
 	final const quantity				= 5;
 	final const map						= 6;
 	final const identity				= 7;
-	final const access					= 8;
+	final const roles					= 8;
 	final const state					= 9;
 
 	const _index_map = [
@@ -33,7 +34,7 @@ class Aspect extends Container
 		'quantity'				=> self::quantity,
 		'map'					=> self::map,
 		'identity'				=> self::identity,
-		'access'				=> self::access,
+		'roles'					=> self::roles,
 		'state'					=> self::state,
 	];
 
@@ -46,51 +47,56 @@ class Aspect extends Container
 		self::quantity			=> 'quantity',
 		self::map				=> 'map',
 		self::identity			=> 'identity',
-		self::access			=> 'access',
+		self::roles				=> 'roles',
 		self::state				=> 'state',
 	];
 
 
 	public array $criteria = [
-		self::container			=> null,	
-		self::location			=> null,	
-		self::operation			=> null,	
-		self::field				=> null,	
-		self::quality			=> null,	
-		self::quantity			=> null,	
-		self::map				=> null,	
-		self::identity			=> null,	
-		self::access			=> null,	
-		self::state				=> null,	
+		self::container			=> null,
+		self::location			=> null,
+		self::operation			=> null,
+		self::field				=> null,
+		self::quality			=> null,
+		self::quantity			=> null,
+		self::map				=> null,
+		self::identity			=> null,
+		self::roles				=> null,
+		self::state				=> null,
 	];
-	
+
 	public static $type = self::container;
-	
+
 	// public function __construct($filters, $operator)
 	public function __construct(
 		string|\Stringable|int $type = null,
+		int|Aspect|string|Stringable $content = null,	// The value. TODO: Use trait to get content out and make this $value
 		&$parent = null,
 		Container &$ancestor = null,
 		array ...$nodes
-	) {
+	)
+	{
 
-		if($parent === null){
-			$parent =& Node::$null;
+		if ($parent === null)
+		{
+			$parent = &Node::$null;
 		}
-	
+
 		// Get the class name, without the namespace
 		$leaf = substr(static::class, strrpos(static::class, '\\') + 1);
 		$leaf = $leaf === 'Aspect' ? 'container' : strtolower($leaf);
 
 		$type = $type !== null ? static::match($type) : static::match($leaf);
-		if ($type === false){
+		if ($type === false)
+		{
 			// Emite E_WARNING
 			trigger_error('Invalid aspect type, defaulting to container', E_USER_WARNING);
 			$type = self::container;
 		}
 
-		if($ancestor === null){
-			$ancesotr =& Node::$null;
+		if ($ancestor === null)
+		{
+			$ancesotr = &Node::$null;
 		}
 
 		$this->content = $content;
@@ -102,9 +108,10 @@ class Aspect extends Container
 			else $this->ancestor = &$this;
 		else $this->ancestor = &$ancestor;
 
-		foreach ($nodes as $aspect) {
+		foreach ($nodes as $aspect)
+		{
 			if ($aspect instanceof self)
-				$this->criteria[ static::match( $leaf ) ] = &$aspect;
+				$this->criteria[static::match($leaf)] = &$aspect;
 
 			// Invalid aspect if we were unable to make an instance
 			if (!$aspect instanceof self)
@@ -121,7 +128,8 @@ class Aspect extends Container
 	 * @return array
 	 * 
 	 */
-	public static function cases(){
+	public static function cases()
+	{
 		return array_values(static::_case_map);
 	}
 
@@ -144,7 +152,8 @@ class Aspect extends Container
 	 * @return array
 	 * 
 	 */
-	public function allowed(){
+	public function allowed()
+	{
 		return static::_case_map;
 	}
 
@@ -157,9 +166,10 @@ class Aspect extends Container
 	 * @return int|string|false
 	 */
 
-	public static function match(int|string|\Stringable $case){
-		if( is_int($case) ) return static::_case_map  [ $case ] 				?? false;
-		else 				return static::_index_map [ strtolower($case) ] 	?? false;
+	public static function match(int|string|\Stringable $case)
+	{
+		if (is_int($case)) return static::_case_map[$case] 				?? false;
+		else 				return static::_index_map[strtolower($case)] 	?? false;
 	}
 
 	/**
@@ -206,7 +216,7 @@ class Aspect extends Container
 	 * - map		- a map from some scope to|from a resource or its aspects
 	 * - identity	- a user, system, team, organization, etc.. entities that can instantiate a role
 	 * - state		- a settable and trackable state of a resource such as 'logged_in', 'locked', 'active', etc
-	 * - access		- authorizations available to roles for this resource. eg. 'edit', 'view', 'delete', etc
+	 * - roles		- authorizations available to roles for this resource. eg. 'edit', 'view', 'delete', etc
 	 * 
 	 * Each aspect type may have its own subtypes, or not.
 	 * This is left to library developers to interpret in their specific context.
@@ -226,13 +236,13 @@ class Aspect extends Container
 	 * 		->sort(Aspect::quality, quality::lighter)
 	 * 				// References: /MyProject/Resource/SomeServer/Thing/Aspects/quality.php
 	 * 		->sort(Aspect::quality, quality::larger)
-	 * 		->sift(Aspect::access, access::view )
-	 * 				// References: /MyProject/Resource/SomeServer/Thing/Aspects/access.php
+	 * 		->sift(Aspect::roles, roles::view )
+	 * 				// References: /MyProject/Resource/SomeServer/Thing/Aspects/roles.php
 	 * 		->sift(Aspect::operation, operation::has_knob )
 	 * 				// References: /MyProject/Resource/SomeServer/Thing/Aspects/operation.php
 	 * 				// In reality you may be using \Approach\Resource\Aspect\* often
 	 * 				// All references assume 'use' imported and named such classes;
-	 * 				// either your project or Approach could be assigneed to "qualities", "quality, "access"..
+	 * 				// either your project or Approach could be assigneed to "qualities", "quality, "roles"..
 	 * 		->load();
 	 * 
 	 * But, more commonly in web development, a resource is a data resource.
@@ -243,7 +253,7 @@ class Aspect extends Container
 	 * A more general example of data usage:
 	 * 
 	 * $myresource = Project\Resource\Thing::find()
-	 *		// use static access of field to ensure the field is defined, but string is fine too
+	 *		// use static roles of field to ensure the field is defined, but string is fine too
 	 * 		->pick(Aspect::field, [ 'id', 'name', field::description ]) 
 	 * 
 	 * 		// a data-centric resource library will assume sort is over field types, probably..maybe
@@ -266,7 +276,7 @@ class Aspect extends Container
 	 * 
 	 */
 
-/*	protected static function define(int $case, string $namespace)
+	/*	protected static function define(int $case, string $namespace)
 	{
 		// Becomes a dictionary of [ $target_namespace => $content ] to create
 		$files_to_create = [];
@@ -276,7 +286,7 @@ class Aspect extends Container
 		 * Extract the path component immediately following 'Resource\' from __NAMESPACE__
 		 * This is the name of the Resource class and will match Scope::$proto[ 'my resource protocol' ]
 		 */
-		/*
+	/*
 		$proto = substr(__NAMESPACE__, strrpos(__NAMESPACE__, '\\') + 1);
 
 		// Extract the remaining path components from __NAMESPACE__, starting after 'Resource\[active_resource]\'
@@ -327,7 +337,8 @@ class Aspect extends Container
  * 
  */
 
- class operation extends Aspect{
+class operation extends Aspect
+{
 	public static $method;										// method to be used to access the resource
 	public static $parameters;									// parameters that the operation accepts
 	public static $accepts;										// media type(s) that the operation can consume
@@ -361,7 +372,7 @@ class Aspect extends Container
  * 	
  */
 
- class quality extends Aspect
+class quality extends Aspect
 {
 	public static $label;										// label for the quality
 	public static $description;									// description of the quality
@@ -385,7 +396,7 @@ class Aspect extends Container
  * 
  */
 
- class quantity extends Aspect
+class quantity extends Aspect
 {
 	public static $label;										// label for the quantity
 	public static $description;									// description of the quantity
@@ -449,7 +460,7 @@ class map extends Aspect
  * 
  */
 
- class authorization extends Aspect
+class authorization extends Aspect
 {
 	public static $label;										// label for the authorization
 	public static $description;									// description of the authorization
