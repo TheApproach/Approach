@@ -384,6 +384,9 @@ class Service extends Branch
             $chunk_size = NULL;
             $use_include_path = false;
 
+			if (!empty($this->metadata[$i]['context']))
+				$stream_in = $stream_in ?? stream_context_create($this->metadata[$i] ['context']);
+
             // check if $metadata provides offset, chunk or include_path at the current index
             if (isset($this->metadata[$i]['offset'])) {
                 $offset = $this->metadata[$i]['offset'];
