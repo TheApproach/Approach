@@ -117,8 +117,6 @@ class Server extends Resource
 	protected bool $has_persistent = false;
 	public $connection;
 
-
-
     public function __construct(
 
         // Normal connection details
