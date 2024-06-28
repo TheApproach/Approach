@@ -437,7 +437,7 @@ class field extends Container{
 		return nullstate::undeclared;
 	}
 
-	public static function getProfile($field, $what=null)
+	public static function getProfile($field, $what=null) // yeah?
 	{
 		$info = null;
 		switch ($what) {

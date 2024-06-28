@@ -1,20 +1,18 @@
 <?php
 
-/*************************************************************************
-
-APPROACH
-
- *************************************************************************/
+/*
+ * APPROACH
+ */
 
 namespace Approach\Service;
 
+use Approach\Render\Container;
+use Approach\Render\Node;
+use Approach\nullstate;
+use \Approach\Composition\Composition as Composition;
+use \Approach\path;
 use \Approach\Scope;
 use \Traversable;
-use \Approach\path;
-use \Approach\Composition\Composition as Composition;
-use Approach\nullstate;
-use Approach\Render\Node;
-use Approach\Render\Container;
 
 // trait ServiceProperties
 // {
@@ -26,13 +24,13 @@ use Approach\Render\Container;
 // }
 
 /*
-    - extends from the Branch class and uses the waitable trait, as required.
-    - has constants for extracting, encoding, translating, and performing known actions, as required. These constants are stored in static properties of the class.
-    - has a constructor that takes an activity constant and a flow constant, as required. The constructor sets these values as instance properties.
-    - has a Receive() method that performs extract, transform, and load operations on input data, as required. The method uses the await() method provided by the FiberManager trait to suspend the Fiber and wait for the result of the async operation.
-    - has a Process() method that manages the underlying Branch logic and aggregates the output of child nodes into a payload property, as required. The method uses the create() and await() methods provided by the FiberManager trait to create child Fibers and wait for their results.
-    - has a Respond() method that encodes and sends the payload using the specified format, as required. The method uses the await() method provided by the FiberManager trait to suspend the Fiber and wait for the result of the async operation.
-*/
+ * - extends from the Branch class and uses the waitable trait, as required.
+ * - has constants for extracting, encoding, translating, and performing known actions, as required. These constants are stored in static properties of the class.
+ * - has a constructor that takes an activity constant and a flow constant, as required. The constructor sets these values as instance properties.
+ * - has a Receive() method that performs extract, transform, and load operations on input data, as required. The method uses the await() method provided by the FiberManager trait to suspend the Fiber and wait for the result of the async operation.
+ * - has a Process() method that manages the underlying Branch logic and aggregates the output of child nodes into a payload property, as required. The method uses the create() and await() methods provided by the FiberManager trait to create child Fibers and wait for their results.
+ * - has a Respond() method that encodes and sends the payload using the specified format, as required. The method uses the await() method provided by the FiberManager trait to suspend the Fiber and wait for the result of the async operation.
+ */
 
 class Service extends Branch
 {
@@ -52,6 +50,7 @@ class Service extends Branch
     public ?bool $register_connection = true;
 
     use connectivity;
+
     public static Node $protocols;
 
     // use waitable;
@@ -69,7 +68,6 @@ class Service extends Branch
         mixed $metadata = null,
         ?bool $register_connection = null
     ) {
-
         $this->flow = $flow ?? $this->flow;
         $this->auto_dispatch = $auto_dispatch ?? $this->auto_dispatch;
         $this->format_in = $format_in ?? $this->format_in;
@@ -80,7 +78,6 @@ class Service extends Branch
         $this->output = $output ?? $this->output;
         $this->metadata = $metadata ?? $this->metadata;
         $this->register_connection = $register_connection ?? $this->register_connection();
-
 
         if (!Decode::has($this->format_in)) {
             throw new \InvalidArgumentException(sprintf('No decoder for %s ($format_in) registered. Register decoder by using Decode::register()', $this->format_in->name));
@@ -134,47 +131,43 @@ class Service extends Branch
         return $this->Respond();
     }
 
-    public function Request(array $metadata = null)
-    {
-    }
+    public function Request(array $metadata = null) {}
 
     public function connect($register_connection = true)
     {
-		$isTransferMode = false;
-		$hasRequestPayload = false;
-		$useFormattedPayload = false;
-		$requestData = [];
+        $isTransferMode = false;
+        $hasRequestPayload = false;
+        $useFormattedPayload = false;
+        $requestData = [];
 
-		// If the input is a transfer target, then the input is a file path or a URL
-		if ($this->target_in == target::transfer) {
-			$isTransferMode = true;
-		}
+        // If the input is a transfer target, then the input is a file path or a URL
+        if ($this->target_in == target::transfer) {
+            $isTransferMode = true;
+        }
 
-		// Check if request data is available 
-		if(!empty($_REQUEST)){
-			$hasRequestPayload = true;
-			
-			// $format_name = strtolower($_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? $_SERVER['HTTP_ACCEPT'] ?? '');
-			$format = strtolower( $this->format_in->name );
-			// Prioritized set of request data
-			$requestData = empty($_REQUEST[$this->format_in->name]) ? 				// Fallback 1: no $_REQUEST[$this->format_in->name]
-								( empty($_REQUEST[$format]) ? 						// Fallback 2: no lowercased key
-									$_REQUEST			 							// Fallback 3: use $_REQUEST final fallback
-									:	 											
-									$_REQUEST[$format]								// Use Fallback 2
-									
-								) 
-								:
-								$_REQUEST[$this->format_in->name]					// Use 1st pick
-							;
-		}
+        // Check if request data is available
+        if (!empty($_REQUEST)) {
+            $hasRequestPayload = true;
 
-		// If the input is a transfer target, and we have request data, it is a better fallback than STDIN
-		if($isTransferMode && $hasRequestPayload){
-			$useFormattedPayload = true;
-		}
+            // $format_name = strtolower($_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? $_SERVER['HTTP_ACCEPT'] ?? '');
+            $format = strtolower($this->format_in->name);
+            // Prioritized set of request data
+            $requestData = empty($_REQUEST[$this->format_in->name])
+                ?  // Fallback 1: no $_REQUEST[$this->format_in->name]
+                    (empty($_REQUEST[$format])
+                        ?  // Fallback 2: no lowercased key
+                            $_REQUEST  // Fallback 3: use $_REQUEST final fallback
+                        : $_REQUEST[$format]  // Use Fallback 2
+                    )
+                : $_REQUEST[$this->format_in->name];  // Use 1st pick
+        }
 
-        $this->input = $this->input ?? ($useFormattedPayload ? $requestData :  static::STDIN );
+        // If the input is a transfer target, and we have request data, it is a better fallback than STDIN
+        if ($isTransferMode && $hasRequestPayload) {
+            $useFormattedPayload = true;
+        }
+
+        $this->input = $this->input ?? ($useFormattedPayload ? $requestData : static::STDIN);
         $this->output = $this->output ?? static::STDOUT;
 
         // Normalize the input to an array, placing single values in the first index of the array
@@ -220,7 +213,7 @@ class Service extends Branch
 
         switch ($this->target_in) {
             case target::route:
-                #serve composition from url
+                // serve composition from url
                 foreach ($this->input as $input) {
                     $this->payload[] = Composition::Route($input);
                 }
@@ -236,16 +229,16 @@ class Service extends Branch
                 break;
             case target::resource:
                 foreach ($this->input as $i => $input) {
-                    $this->payload[] = new $this->input(...$this->metadata[$i]); // maybe ??
+                    $this->payload[] = new $this->input(...$this->metadata[$i]);  // maybe ??
                 }
                 break;
             case target::transfer:
-                //Fetch the matching import file from cloud storage, save locally to path.get(path::files) and set the file_path property to the local path
+                // Fetch the matching import file from cloud storage, save locally to path.get(path::files) and set the file_path property to the local path
                 foreach ($this->input as $i => $transferred_file) {
                     // Get the filename from $transferred_file
                     $filename = pathinfo($transferred_file, PATHINFO_FILENAME);
                     file_put_contents(
-                        Scope::GetPath(path::project) . '/support/files/' . $filename, // temporarily save the file to the project's support/files directory until path.temp is implemented
+                        Scope::GetPath(path::project) . '/support/files/' . $filename,  // temporarily save the file to the project's support/files directory until path.temp is implemented
                         $this->payload[$i]
                     );
                     $this->input[$i] = Scope::GetPath(path::project) . '/support/files/' . $filename;
@@ -287,7 +280,7 @@ class Service extends Branch
                 return $this->stream_out();
                 break;
             case target::variable:
-			case target::resource:
+            case target::resource:
             default:
                 return $this->payload;
                 break;
@@ -318,7 +311,6 @@ class Service extends Branch
 
         return 'Service';
     }
-
 
     public static function disconnectAll()
     {
@@ -352,7 +344,6 @@ class Service extends Branch
 
     public function disconnect()
     {
-
         if (is_resource($this->stream_in)) {
             fclose($this->stream_in);
         }
@@ -377,15 +368,15 @@ class Service extends Branch
 
     public function stream_in($stream_in = NULL)
     {
-        //Allow user to use stream_context_set_option on $this->stream_in
+        // Allow user to use stream_context_set_option on $this->stream_in
 
         foreach ($this->input as $i => $input) {
             $offset = 0;
             $chunk_size = NULL;
             $use_include_path = false;
 
-			if (!empty($this->metadata[$i]['context']))
-				$stream_in = $stream_in ?? stream_context_create($this->metadata[$i] ['context']);
+            if (!empty($this->metadata[$i]['context']))
+                $stream_in = $stream_in ?? stream_context_create($this->metadata[$i]['context']);
 
             // check if $metadata provides offset, chunk or include_path at the current index
             if (isset($this->metadata[$i]['offset'])) {

@@ -111,50 +111,48 @@ use Approach\runtime;
 
 class Server extends Resource
 {
-    protected $pool = [];
-    protected static $configs = [];
+	protected $pool = [];
+	protected static $configs = [];
 	protected bool $is_connected = false;
 	protected bool $has_persistent = false;
 	public $connection;
 
 
 
-    public function __construct(
+	public function __construct(
 
-        // Normal connection details
-        public null|string|stringable|Node $host    = null,
-        public null|string|stringable|Node $user    = null,
-        public null|string|stringable|Node $pass    = null,
-        public null|string|stringable|Node $database= null,
-        public ?int $port     = null,
-        public null|string|stringable|Node $socket    = null,
+		// Normal connection details
+		public null|string|stringable|Node $host    = null,
+		public null|string|stringable|Node $user    = null,
+		public null|string|stringable|Node $pass    = null,
+		public null|string|stringable|Node $database = null,
+		public ?int $port     = null,
+		public null|string|stringable|Node $socket    = null,
 
-        // SSL connection details
-        public null|string|stringable|Node $ssl_key    = null,
-        public null|string|stringable|Node $ssl_cert    = null,
-        public null|string|stringable|Node $ssl_ca        = null,
-        public null|string|stringable|Node $ssl_capath    = null,
-        public null|string|stringable|Node $ssl_cipher    = null,
+		// SSL connection details
+		public null|string|stringable|Node $ssl_key    = null,
+		public null|string|stringable|Node $ssl_cert    = null,
+		public null|string|stringable|Node $ssl_ca        = null,
+		public null|string|stringable|Node $ssl_capath    = null,
+		public null|string|stringable|Node $ssl_cipher    = null,
 
-        // Connection options
-        // public null|string|stringable|Node $client_flags    = null,        // Ex: MYSQLI_CLIENT_SSL, MYSQLI_CLIENT_COMPRESS, MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT
-        public null|string|stringable|Node $charset        = null,        // Ex: utf8mb4
-        public null|string|stringable|Node $collation        = null,        // Ex: utf8mb4_unicode_ci
-        public ?int $timeout        = null,        // Ex: 5
+		// Connection options
+		// public null|string|stringable|Node $client_flags    = null,        // Ex: MYSQLI_CLIENT_SSL, MYSQLI_CLIENT_COMPRESS, MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT
+		public null|string|stringable|Node $charset        = null,        // Ex: utf8mb4
+		public null|string|stringable|Node $collation        = null,        // Ex: utf8mb4_unicode_ci
+		public ?int $timeout        = null,        // Ex: 5
 
-        // Connection pool options
-        public ?bool $persistent        = true,
+		// Connection pool options
+		public ?bool $persistent        = true,
 		public ?bool $skip_connection    = false,
 		protected ?bool $is_galera        = null,
-        public null|string|stringable|Node $label    = null
-    )
-    {
+		public null|string|stringable|Node $label    = null
+	) {
 		$p = $this->persistent ? 'p:' : '';
 
 		// Check for any class constants which can be used as defaults
-		foreach (get_class_vars(static::class) as $key => $value){
-			if (!isset($this->{$key}) && defined(static::class . '::' . $key))
-			{
+		foreach (get_class_vars(static::class) as $key => $value) {
+			if (!isset($this->{$key}) && defined(static::class . '::' . $key)) {
 				$this->{$key} = constant(static::class . '::' . $key);
 			}
 		}
@@ -166,21 +164,20 @@ class Server extends Resource
 		$this->port        = $this->port     ?? ini_get('mysqli.default_port') ?? 3306;
 		$this->socket      = $this->socket   ?? ini_get('mysqli.default_socket') ?? '/var/lib/mysql/mysql.sock';
 
-		$this->label       = $p.$this->label ?? $p.$this->get_fallback_label();
+		$this->label       = $p . $this->label ?? $p . $this->get_fallback_label();
 		$this->set_render_id();
 
 		// Check if any SSL options are set; throw an error if unable to connect
-		$this->use_ssl = 
-			$this->ssl_key || 
-			$this->ssl_cert || 
-			$this->ssl_ca || 
-			$this->ssl_capath || 
-			$this->ssl_cipher
-		;
+		$this->use_ssl =
+			$this->ssl_key ||
+			$this->ssl_cert ||
+			$this->ssl_ca ||
+			$this->ssl_capath ||
+			$this->ssl_cipher;
 
-		
+
 		/* Check if we should skip this connection or not */
-		if( !$this->skip_connection ){
+		if (!$this->skip_connection) {
 			$this->connect(
 				$host,
 				$user,
@@ -190,29 +187,27 @@ class Server extends Resource
 				$socket
 			);
 			// Check if we are in a galera cluster or not
-			if ($this->is_galera === null)
-			{
+			if ($this->is_galera === null) {
 				$this->is_galera = $this->check_galera();
 			}
-
 		}
-    }
+	}
 
-	public function get_fallback_label(){
+	public function get_fallback_label()
+	{
 		// normalize host to safe characters for class name
 		$domain = explode('.', $this->host);
 		$is_ip = false;
-		foreach ($domain as $part){
-			if (is_numeric($part)){
+		foreach ($domain as $part) {
+			if (is_numeric($part)) {
 				$is_ip = true;
-			}
-			else{
+			} else {
 				$is_ip = false;
 				break;
 			}
 		}
 
-		if( !$is_ip ){
+		if (!$is_ip) {
 			$rev_domain = array_reverse($domain);
 			$rev_project_ensemble = array_reverse(
 				explode(
@@ -223,13 +218,13 @@ class Server extends Resource
 
 			$match = false;
 			// Check if we are in a subdomain of the project ensemble
-			foreach ($rev_domain as $key => $part){
+			foreach ($rev_domain as $key => $part) {
 				$match = ($part == $rev_project_ensemble[$key]);
-				if(!$match) break;
+				if (!$match) break;
 			}
 
 			// If we are in a subdomain of the project ensemble, then remove the project ensemble from the domain
-			if ($match){
+			if ($match) {
 				$domain = array_slice($domain, 0, count($domain) - count($rev_project_ensemble));
 			}
 
@@ -239,14 +234,14 @@ class Server extends Resource
 
 			// If the first character is a number, then prepend an underscore
 			$fallback = is_numeric(substr($fallback, 0, 1)) ? '_' . $fallback : $fallback;
-		}
-		else $fallback = 'ip_' . implode('_', $domain);
+		} else $fallback = 'ip_' . implode('_', $domain);
 
 		// $fallback = $is_ip ? 'ip' . implode('_', $domain) : $domain[0];
 		return $fallback;
 	}
 
-	public function connect( $host = null, $user = null, $pass = null, $db = null, $port = null, $socket = null ){
+	public function connect($host = null, $user = null, $pass = null, $db = null, $port = null, $socket = null)
+	{
 
 		// $path_to_project = __DIR__ . '/../..';
 		// $path_to_approach = __DIR__ . '/../../approach/';
@@ -264,11 +259,10 @@ class Server extends Resource
 		$state = $this->connector->connect(server: $this);
 
 		// If $state was a MySQLi error number, then output the error from the MySQLi connection at connector->connection
-		if (!($state instanceof nullstate) && $state > 0){
+		if (!($state instanceof nullstate) && $state > 0) {
 			throw new \Exception('Connection failed: ' . $this->connection->connect_error);
-		}
-		elseif ($state instanceof nullstate && $state !== nullstate::defined){
-			switch ($state){
+		} elseif ($state instanceof nullstate && $state !== nullstate::defined) {
+			switch ($state) {
 				case nullstate::undefined:
 					throw new \Exception('The connection state was undefined.');
 					break;
@@ -285,12 +279,10 @@ class Server extends Resource
 					throw new \Exception('The connection state was vey ambiguous.');
 					break;
 			}
-		}
-		elseif ($state instanceof nullstate && $state === nullstate::defined){
+		} elseif ($state instanceof nullstate && $state === nullstate::defined) {
 			$this->is_connected = true;
 			$this->connection = $this->connector->connection;
-		}
-		else{
+		} else {
 			throw new \Exception('The connection state was vey ambiguous.');
 		}
 
@@ -303,69 +295,69 @@ class Server extends Resource
 	 * @return bool	True if we are in a galera cluster, false if not
 	 */
 
-	public function check_galera(){
+	public function check_galera()
+	{
 		// Check if we are in a galera or not using MySQLi in $this->connection
 		$result = $this->connection->query('SHOW GLOBAL STATUS LIKE \'wsrep_on\'');
 		$row = $result->fetch_assoc();
-		
+
 		// Detect query errors
-		if( $this->connection->errno ){
-			throw new \Exception('MySQLi error: '.$this->connection->error);
+		if ($this->connection->errno) {
+			throw new \Exception('MySQLi error: ' . $this->connection->error);
 		}
 
 		// If there was a result, then wsrep_on is ON, which means we are in a galera cluster
-		if( !empty($row) && isset($row['Value']) ){
+		if (!empty($row) && isset($row['Value'])) {
 			return true;
 		}
 
 		return false;
 	}
 
-    public function createPool($configs)
-    {
-		
-		foreach ($configs as $config)
-        {
+	public function createPool($configs)
+	{
+
+		foreach ($configs as $config) {
 			$server = new self(...$config);
 			$server->connect(...$config);
 			$proto = $server->connector->getProtocol();
 
-			if( empty(Service::$protocols[$proto][$server->label])){
-				if( $this->label == $server->label ){
+			if (empty(Service::$protocols[$proto][$server->label])) {
+				if ($this->label == $server->label) {
 					Service::$protocols[$proto][$this->label] = $this;
 					$this->pool[] = $server;
 				}
-			}
-			else
+			} else
 				Service::$protocols[$proto][$this->label]->pool[] = $server;
-        }
-        return self::$pool;
-    }
+		}
+		return self::$pool;
+	}
 
-    public static function getPool($label){
-		if( empty(Service::$protocols['MariaDB']) ){
+	public static function getPool($label)
+	{
+		if (empty(Service::$protocols['MariaDB'])) {
 			return [];
 		}
-		if( $label == '' || $label == '*'){
+		if ($label == '' || $label == '*') {
 			return Service::$protocols['MariaDB'][$label] ?? Service::$protocols['MariaDB'] ?? [];
 		}
 		return Service::$protocols['MariaDB'][$label] ?? [];
-    }
+	}
 
-    public static function getPoolCount($label)
-    {
-        return count((self::getPool($label)?->pool ?? [])) + 1;
-    }
+	public static function getPoolCount($label)
+	{
+		return count((self::getPool($label)?->pool ?? [])) + 1;
+	}
 
-    public static function getPoolConnection($label)
-    {
-        $pool = self::getPool($label);
+	public static function getPoolConnection($label)
+	{
+		$pool = self::getPool($label);
 
-        // If there is only one connection in the pool, return it
-        return count($pool) > 0 ?
-            $pool[0] :
-            $pool[rand(0, count($pool) - 1)];
-    }
+		// If there is only one connection in the pool, return it
+		return count($pool) > 0 ?
+			$pool[0] :
+			$pool[rand(0, count($pool) - 1)];
+	}
 
 
 	// Load data using associative fetch
@@ -396,8 +388,7 @@ class Server extends Resource
 		//query for table names
 		$result = $this->connection->query('SHOW TABLES IN ' . $database);
 		$tables = [];
-		while ($row = $result->fetch_assoc())
-		{
+		while ($row = $result->fetch_assoc()) {
 			$tables[] = $row['Tables_in_' . $database];
 		}
 		return $tables;
@@ -411,8 +402,7 @@ class Server extends Resource
 	{
 		$result = $this->connection->query('SHOW DATABASES');
 		$dbs = [];
-		while ($row = $result->fetch_assoc())
-		{
+		while ($row = $result->fetch_assoc()) {
 			$dbs[] = $row['Database'];
 		}
 		return $dbs;
@@ -425,7 +415,8 @@ class Server extends Resource
 	 * @return array A list of columns
 	 */
 
-	public function GetColumnList($database, $table){
+	public function GetColumnList($database, $table)
+	{
 		//escape input
 		$database = $this->connection->real_escape_string($database);
 		$table = $this->connection->real_escape_string($table);
@@ -433,8 +424,7 @@ class Server extends Resource
 		//query for column names
 		$result = $this->connection->query('SHOW COLUMNS FROM ' . $database . '.' . $table);
 		$columns = [];
-		while ($row = $result->fetch_assoc())
-		{
+		while ($row = $result->fetch_assoc()) {
 			$columns[] = $row['Field'];
 		}
 		return $columns;
@@ -450,35 +440,35 @@ class Server extends Resource
 	 * @param string $table The table name to list accessors from
 	 * @return array A list of accessors
 	 */
-	public function GetAccessorList($database, $table){
+	public function GetAccessorList($database, $table)
+	{
 		//escape input
 		$database = $this->connection->real_escape_string($database);
 		$table = $this->connection->real_escape_string($table);
-		$accessors = [
-		];
+		$accessors = [];
 
 		// Primary Accessor
 		$result = $this->connection->query('SHOW INDEX FROM ' . $database . '.' . $table . ' WHERE Key_name = \'PRIMARY\'');
 
-		while ($row = $result->fetch_assoc()){
+		while ($row = $result->fetch_assoc()) {
 			$accessors['primary'][] = $row['Column_name'];
 		}
 
 		// Unique Accessors
 		$result = $this->connection->query('SHOW INDEX FROM ' . $database . '.' . $table . ' WHERE Non_unique = 0');
 
-		while ($row = $result->fetch_assoc()){
+		while ($row = $result->fetch_assoc()) {
 			$accessors['unique'][] = $row['Column_name'];
 		}
 
 		// Foreign Key Accessors
 
 		// $result = $this->connection->query('SELECT * FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = \''.$database.'\' AND TABLE_NAME = \''.$table.'\' AND REFERENCED_TABLE_NAME IS NOT NULL;');
-		$result = $this->connection->query('SELECT * FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = \''.$database.'\' AND TABLE_NAME = \''.$table.'\' AND REFERENCED_TABLE_NAME IS NOT NULL;');
-		while ($row = $result->fetch_assoc()){
+		$result = $this->connection->query('SELECT * FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = \'' . $database . '\' AND TABLE_NAME = \'' . $table . '\' AND REFERENCED_TABLE_NAME IS NOT NULL;');
+		while ($row = $result->fetch_assoc()) {
 			$accessors['foreign'][$row['REFERENCED_TABLE_NAME']][] = $row['COLUMN_NAME'];
 		}
-		
+
 		return $accessors;
 	}
 
@@ -487,27 +477,28 @@ class Server extends Resource
 	/**
 	 * 	Discover the database
 	 */
-	public function discover(){
+	public function discover()
+	{
 
-		$resource_root = Scope::GetPath(path::resource).'MariaDB' . DIRECTORY_SEPARATOR;
+		$resource_root = Scope::GetPath(path::resource) . 'MariaDB' . DIRECTORY_SEPARATOR;
 		$resource_ns = Scope::$Active->project . '\\Resource\\MariaDB\\';
-		$safe =''; // We will use this to hold a safe version of $this->label
-		
+		$safe = ''; // We will use this to hold a safe version of $this->label
+
 		// Check if $this->label starts with 'p:' (persistent)
 		// If so, then remove it and set that result to $safe
 		$safe = substr($this->label, 0, 2) == 'p:' ?
-		substr($this->label, 2) :
-		$safe = $this->label;
-		
+			substr($this->label, 2) :
+			$safe = $this->label;
+
 		// Remove characters that are invalid for class names for this->label
 		$safe = preg_replace('/[^a-zA-Z0-9_]/', '', $safe);
-		
+
 		/* TODO: Actually use Imprint::Mint with a Class Pattern */
 		$this->MintResourceClass(
-			path: $resource_root.$safe.'.php',
-			class: Scope::$Active->project.'\\Resource\\MariaDB\\'. $safe,
+			path: $resource_root . $safe . '.php',
+			class: Scope::$Active->project . '\\Resource\\MariaDB\\' . $safe,
 			extends: static::class,
-			namespace: Scope::$Active->project.'\\Resource\\MariaDB\\',
+			namespace: Scope::$Active->project . '\\Resource\\MariaDB\\',
 			uses: [],
 			// constants: [],
 			// properties: [],
@@ -516,12 +507,12 @@ class Server extends Resource
 
 		// Discover the databases
 		$dbs = $this->GetDatabaseList();
-		foreach ($dbs as $db){
+		foreach ($dbs as $db) {
 			$database = new Database($this, $db);
 			$database->discover();
 		}
 	}
-	
+
 	/**
 	 * Mint a class file for a database
 	 * @param string $path The path to write the class file to
@@ -543,51 +534,51 @@ class Server extends Resource
 		array $properties = [],
 		array $methods = [],
 		$overwrite = false
-	): void{
+	): void {
 		// Grab the last part of the class name for the label
 		$class = explode('\\', $class);
 		$class = $class[count($class) - 1];
 
 		$extends = $extends ?? '\Approach\Resource\MariaDB\Server';
-		$namespace = $namespace ?? Scope::$Active->project.'\Resource';
+		$namespace = $namespace ?? Scope::$Active->project . '\Resource';
 		$uses = $uses ?? [
 			static::class,
 		];
-		if(empty($constants)){
-			if(!empty($this->host)) 
-				$constants[]= 'const HOST = \''.$this->host.'\';';
-			if(!empty($this->user)) 
-				$constants[]= 'const USER = \''.$this->user.'\';';
+		if (empty($constants)) {
+			if (!empty($this->host))
+				$constants[] = 'const HOST = \'' . $this->host . '\';';
+			if (!empty($this->user))
+				$constants[] = 'const USER = \'' . $this->user . '\';';
 			// if(!empty($this->pass)) 
 			// 	$constants[]= 'const PASS = \''.$this->pass.'\';';
-			if(!empty($this->database)) 
-				$constants[]= 'const DATABASE = \''.$this->database.'\';';
-			if(!empty($this->port)) 
-				$constants[]= 'const PORT = \''.$this->port.'\';';
-			if(!empty($this->socket)) 
-				$constants[]= 'const SOCKET = \''.$this->socket.'\';';
+			if (!empty($this->database))
+				$constants[] = 'const DATABASE = \'' . $this->database . '\';';
+			if (!empty($this->port))
+				$constants[] = 'const PORT = \'' . $this->port . '\';';
+			if (!empty($this->socket))
+				$constants[] = 'const SOCKET = \'' . $this->socket . '\';';
 			// if(!empty($this->ssl_key)) 
 			// 	$constants[]= 'const SSL_KEY = \''.$this->ssl_key.'\';';
-			if(!empty($this->ssl_cert)) 
-				$constants[]= 'const SSL_CERT = \''.$this->ssl_cert.'\';';
-			if(!empty($this->ssl_ca)) 
-				$constants[]= 'const SSL_CA = \''.$this->ssl_ca.'\';';
-			if(!empty($this->ssl_capath)) 
-				$constants[]= 'const SSL_CAPATH = \''.$this->ssl_capath.'\';';
-			if(!empty($this->ssl_cipher)) 
-				$constants[]= 'const SSL_CIPHER = \''.$this->ssl_cipher.'\';';
-			if(!empty($this->charset)) 
-				$constants[]= 'const CHARSET = \''.$this->charset.'\';';
-			if(!empty($this->collation)) 
-				$constants[]= 'const COLLATION = \''.$this->collation.'\';';
-			if(!empty($this->timeout)) 
-				$constants[]= 'const TIMEOUT = \''.$this->timeout.'\';';
-			if(!empty($this->persistent)) 
-				$constants[]= 'const PERSISTENT = \''.$this->persistent.'\';';
-			if(!empty($this->skip_connection)) 
-				$constants[]= 'const SKIP_CONNECTION = \''.$this->skip_connection.'\';';
-			if(!empty($this->is_galera)) 
-				$constants[]= 'const IS_GALERA = \''.$this->is_galera.'\';';
+			if (!empty($this->ssl_cert))
+				$constants[] = 'const SSL_CERT = \'' . $this->ssl_cert . '\';';
+			if (!empty($this->ssl_ca))
+				$constants[] = 'const SSL_CA = \'' . $this->ssl_ca . '\';';
+			if (!empty($this->ssl_capath))
+				$constants[] = 'const SSL_CAPATH = \'' . $this->ssl_capath . '\';';
+			if (!empty($this->ssl_cipher))
+				$constants[] = 'const SSL_CIPHER = \'' . $this->ssl_cipher . '\';';
+			if (!empty($this->charset))
+				$constants[] = 'const CHARSET = \'' . $this->charset . '\';';
+			if (!empty($this->collation))
+				$constants[] = 'const COLLATION = \'' . $this->collation . '\';';
+			if (!empty($this->timeout))
+				$constants[] = 'const TIMEOUT = \'' . $this->timeout . '\';';
+			if (!empty($this->persistent))
+				$constants[] = 'const PERSISTENT = \'' . $this->persistent . '\';';
+			if (!empty($this->skip_connection))
+				$constants[] = 'const SKIP_CONNECTION = \'' . $this->skip_connection . '\';';
+			if (!empty($this->is_galera))
+				$constants[] = 'const IS_GALERA = \'' . $this->is_galera . '\';';
 			$constants[] = 'const CONNECTOR_CLASS = \'\\Approach\\Service\\MariaDB\\Connector\';';
 		}
 
@@ -595,10 +586,10 @@ class Server extends Resource
 			// Add additional trait blocks for your server classes here
 			// 'use \Approach\Resource\MyResource\connectivity;',
 			// 'use \Approach\Resource\MyResource\discovery;',...
-			'use '.$class.'_user_trait;',
+			'use ' . $class . '_user_trait;',
 		];
 
-		$properties = $properties ?? [ 
+		$properties = $properties ?? [
 			// Add additional properties for your server classes here
 			//'public bool $is_connected = false;',
 		];
@@ -606,16 +597,16 @@ class Server extends Resource
 		$methods = $methods ?? [
 			// Add additional method blocks for your server classes here
 		];
-		$insert=[];
-		$insert[] = implode(PHP_EOL."\t", $traits);
-		$insert[] = implode(PHP_EOL."\t", $constants);
-		$insert[] = implode(PHP_EOL."\t", $properties);
-		$insert[] = implode(PHP_EOL."\t", $methods);
+		$insert = [];
+		$insert[] = implode(PHP_EOL . "\t", $traits);
+		$insert[] = implode(PHP_EOL . "\t", $constants);
+		$insert[] = implode(PHP_EOL . "\t", $properties);
+		$insert[] = implode(PHP_EOL . "\t", $methods);
 
 		$namespace = trim($namespace, '\\');
-		$extends = '\\'.trim($extends, '\\');
+		$extends = '\\' . trim($extends, '\\');
 		// Generate the class file
-		$content = '<?php'.PHP_EOL.PHP_EOL.<<<CLASS
+		$content = '<?php' . PHP_EOL . PHP_EOL . <<<CLASS
 namespace $namespace;
 
 class $class extends $extends
@@ -633,7 +624,7 @@ CLASS;
 		if (!file_exists($file_dir)) mkdir($file_dir, 0770, true);
 		if (!file_exists($file_dir . '/' . $class . '_user_trait.php')) {
 			$user_trait =
-			'<?php
+				'<?php
 
 namespace ' . $namespace . ';
 
@@ -675,11 +666,11 @@ trait ' . $class . '_user_trait
 
 		// Create the directory if it doesn't exist
 		$dir = dirname($path);
-		if (!is_dir( $dir )){
+		if (!is_dir($dir)) {
 			mkdir($dir, 0770, true);
 		}
 
-		echo PHP_EOL.'Creating class file: '.$path.PHP_EOL;
+		echo PHP_EOL . 'Creating class file	: ' . $path . PHP_EOL;
 		// Write the class file
 		file_put_contents($path, $content);
 	}
