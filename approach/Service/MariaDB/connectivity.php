@@ -95,7 +95,6 @@ trait connectivity
 	 * 					Service::$protocol[MariaDB][localhost][MyDatabase] --> Resource\MariaDB\Database
 	 * 					Service::$protocol[MariaDB][localhost][MyDatabase][MyTable] --> Resource\MariaDB\Table
 	 * 
-	 * 
 	 */
 	public function register_connection($server=null)
 	{
@@ -176,6 +175,7 @@ trait connectivity
 		}
 		finally
 		{
+			// TODO: Reset query and connection state if stalled
 			$state = $result ? nullstate::defined : nullstate::undefined;
 		}
 		return $state;
