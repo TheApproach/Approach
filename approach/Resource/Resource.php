@@ -7,7 +7,7 @@
     - An available supply that can be drawn on when needed.
     - The ability to deal with a difficult or troublesome situation effectively; resourcefulness.
     - The total means available for infrastructure development, such as mineral wealth, labor force, and armaments.
-    - The total means available to a company for increasing production or profit, including plant, labor, and raw material; assets.
+    - The total means available to a companny for increasing production or profit, including plant, labor, and raw material; assets.
     - Such means considered individually.
 
     From The American Heritage® Dictionary of the English Language, 5th Edition
@@ -580,17 +580,26 @@ class Resource extends RenderNode implements Stream
 			$content .= 'namespace ' . $namespace . ';' . PHP_EOL . PHP_EOL;
 
 			foreach ($uses as $use)	$content .= 'use ' . $use . ';' . PHP_EOL;
+            $profilePath = $namespace;
+            // make it into \Resource\Aspect\MariaDB
+            $profilePath = str_replace('\\Resource\\MariaDB', '\\Resource\\MariaDB\\Aspect', $profilePath);
+
+            $content .= 'use ' . $profilePath . '\\' . $class . '_user_trait;' . PHP_EOL . PHP_EOL;
 
 			// Write the class
 			$content .= 'class ' . $class . ' extends ' . $extends . '{' . PHP_EOL;
 			$content .= "\t" . '// Change the ' . $class . '_user_trait to add functionality to this generated class' . PHP_EOL;
-			$content .= "\t" . 'use ' . $class . '_user_trait;' . PHP_EOL . PHP_EOL;
+            //FIXME: Uncomment this and change the order so that user_trait is included first
+//			$content .= "\t" . 'use ' . $class . '_user_trait;' . PHP_EOL . PHP_EOL;
 			foreach ($constants as $constant)	$content .= "\t" . 'const ' . $constant . ';' . PHP_EOL;
 			foreach ($properties as $property)	$content .= "\t" . 'public ' . $property . ';' . PHP_EOL;
 			foreach ($methods as $method)		$content .= "\t" . $method . PHP_EOL;
 			$content .= '}' . PHP_EOL;
 
 			$file_dir = dirname($path);
+            $profileFileDir = str_replace('Resource/MariaDB', 'Resource/MariaDB/Aspect', $file_dir);
+
+//            $namespacePath = $profilePath . '\\'.$class;
 
 			// Make sure the path/ and path/user_trait.php exist
 			if (!file_exists($file_dir)) mkdir($file_dir, 0770, true);
@@ -598,13 +607,13 @@ class Resource extends RenderNode implements Stream
 				$user_trait =
 					'<?php
 
-namespace ' . $namespace . ';
+namespace ' . $profilePath . ';
 
-use ' . $extends . '/profile' . ';
+// use ' . $profilePath . ';
 
 trait ' . $class . '_user_trait
 {
-	use profile;
+	//use profile;
 	/**** User Trait ****
 	 * 
 	 *  This trait is used to add user functionality to an Approach Resource.
@@ -628,8 +637,10 @@ trait ' . $class . '_user_trait
 	 * 
 	 */
 }';
-
-				$file = fopen($file_dir . '/' . $class . '_user_trait.php', 'w');
+                if (!is_dir($profileFileDir)) {
+                    mkdir($profileFileDir, 0777, true);
+                }
+				$file = fopen($profileFileDir . '/' . $class . '_user_trait.php', 'w');
 				fwrite($file, $user_trait);
 				fclose($file);
 			}

@@ -618,7 +618,7 @@ class $class extends $extends
 }
 
 CLASS;
-
+		
 		$file_dir = dirname($path);
 		// Make sure the path/ and path/user_trait.php exist
 		if (!file_exists($file_dir)) mkdir($file_dir, 0770, true);

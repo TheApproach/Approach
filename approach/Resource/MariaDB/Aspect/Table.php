@@ -329,7 +329,6 @@ class Table extends discover
 		$aspect_path = $aspect_root . '/Aspect' . $aspect_branch;
 		$aspect_path = substr($aspect_path, 0, -4);
 
-//         replace $aspect_ns from MyProject\Resource\MariaDB\MyData\test\names to MyProject\Resource\MariaDB\Aspect\MyData\test\names
         // remove p: from $caller::SERVER_NAME
         $servername = $caller::SERVER_NAME;
         $servername = substr($servername, 2);
@@ -347,9 +346,6 @@ class Table extends discover
 
         // exit($aspect_branch . ' | ' . $aspect_path . '|' . $aspect_path);
 
-        $dObj->filename = $aspect_path . '/field.php';
-        static::MintAspect($dObj, $columns, 'field'); //,  $classpath);
-//
 		//FIXME: Noob's Linux sucks: Replace it with 0660 when pushing
 		// Make sure the directory exists and is RW but NOT executable, for user and group only
 		if (!is_dir($aspect_path)) {
