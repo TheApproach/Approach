@@ -136,7 +136,6 @@ trait discoverability
 	 * @return array - An array of Aspect objects
 	 * 
 	 */
-
 	public static function discover(null|\Stringable|string|Resource $resource = null)
 	{
 		// If no resource was given, use the context we are in
@@ -190,8 +189,9 @@ trait discoverability
 				static::define_operations($caller);
 				break;
 			case discover::field:
-				static::define_fields($caller);
-				break;
+				$fields = static::define_fields($caller);
+				static::define_profile($caller, $fields);
+                break;
 			case discover::quality:
 				static::define_qualities($caller);
 				break;
@@ -211,15 +211,21 @@ trait discoverability
 				static::define_containers($caller);
 				static::define_locations($caller);
 				static::define_operations($caller);
-				static::define_fields($caller);
+				$fields = static::define_fields($caller);
+                static::define_profile($caller, $fields);
 				static::define_qualities($caller);
 				static::define_quantities($caller);
 				static::define_maps($caller);
 				static::define_states($caller);
 				static::define_access($caller);
 				break;
-			default: 
+			default:
 		}
+
+		//TODO: Actually implement this
+//		static::define_profile();
+//		static::define_user_trait();
+
 		// check if parent::class is a self::class
 		// if so, call parent::define($which), else nothing
 
@@ -234,7 +240,7 @@ trait discoverability
 	}
 	public static function define_fields($caller)
 	{
-		return true;
+		return [];
 	}
 	public static function define_locations($caller)
 	{

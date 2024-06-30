@@ -40,7 +40,7 @@ trait database_discoverability
 }
 class Database extends discover
 {
-	use database_discoverability{
+	use database_discoverability, resource_discoverability {
 		database_discoverability::define_locations insteadof resource_discoverability;
 	}
 }

@@ -7,7 +7,7 @@
     - An available supply that can be drawn on when needed.
     - The ability to deal with a difficult or troublesome situation effectively; resourcefulness.
     - The total means available for infrastructure development, such as mineral wealth, labor force, and armaments.
-    - The total means available to a company for increasing production or profit, including plant, labor, and raw material; assets.
+    - The total means available to a companny for increasing production or profit, including plant, labor, and raw material; assets.
     - Such means considered individually.
 
     From The American Heritage® Dictionary of the English Language, 5th Edition
@@ -35,7 +35,9 @@ use \Approach\Service\format;
 use \Approach\Service\target;
 use Stringable;
 
-abstract class accessor{}
+abstract class accessor
+{
+}
 
 const locate	= 0;
 const pick		= 1;
@@ -88,21 +90,21 @@ class Resource extends RenderNode implements Stream
 		$sift 	= null,					// Partition and add criteria to the result set
 		$divide = null,					// Divide the result set into groups
 		$filter = null 					// Apply post-processing filters to the result set
-	)
-	{
+	) {
 		/** Alter resource selection via Aspects	*/
 		$this->__approach_resource_context = new Aspect();
-		$this->__approach_resource_context['locate']	= ($where 	?? new RenderNode(content:'/') );
-		$this->__approach_resource_context['pick']		= ($pick 	?? new Container() );
-		$this->__approach_resource_context['sort']		= ($sort 	?? new Container() );
-		$this->__approach_resource_context['weigh']		= ($weigh 	?? new Container() );
-		$this->__approach_resource_context['sift']		= ($sift 	?? new Container() );
-		$this->__approach_resource_context['divide']	= ($divide ?? new Container() );
-		$this->__approach_resource_context['filter']	= ($filter ?? new Container() );
+		$this->__approach_resource_context['locate']	= ($where 	?? new RenderNode(content: '/'));
+		$this->__approach_resource_context['pick']		= ($pick 	?? new Container());
+		$this->__approach_resource_context['sort']		= ($sort 	?? new Container());
+		$this->__approach_resource_context['weigh']		= ($weigh 	?? new Container());
+		$this->__approach_resource_context['sift']		= ($sift 	?? new Container());
+		$this->__approach_resource_context['divide']	= ($divide ?? new Container());
+		$this->__approach_resource_context['filter']	= ($filter ?? new Container());
 	}
 
-	public function define(){
-		
+	public function define()
+	{
+
 		$aspects = aspects::manifest($this);
 
 		// $this->aspects = $aspects;
@@ -124,44 +126,43 @@ class Resource extends RenderNode implements Stream
 		?Aspect $what		= null,
 		?callable $filter	= null,
 		?string $as			= null
-	):Resource|Stringable|string|nullstate
-	{
+	): Resource|Stringable|string|nullstate {
 		// Initialize values here so things don't persist between consecutive calls & failures
 		$this->tmp_parsed_url = array();
 		$tmp_parsed_url = array();
 
 
 		// check protocl exists, and parse it
-		if(strpos($where, '://') === false){
+		if (strpos($where, '://') === false) {
 			return nullstate::ambiguous;
 		}
 
 		list($tmp_parsed_url['protocol'], $where) = explode('://', $where, 2);
 
-		if($tmp_parsed_url['protocol'] === '' || empty($where[0]) || $where[0] === '/'){
+		if ($tmp_parsed_url['protocol'] === '' || empty($where[0]) || $where[0] === '/') {
 			return nullstate::ambiguous;
 		}
 
-		if(strpos($where, '?') !== false){
+		if (strpos($where, '?') !== false) {
 			list($where, $tmp_parsed_url['query_string']) = explode('?', $where, 2);
 
 			// parse_str stores the result in the second argument, and urldecodes automatically
 			// RFC 3986 section 3.4 doesn't elaborate much on query strings, but I will assume
 			// that this function follows the spec
 			parse_str($tmp_parsed_url['query_string'], $tmp_parsed_url['query_string']);
-		}else{
+		} else {
 			$tmp_parsed_url['query_string'] = [];
 		}
 
-		if(strpos($where, '/') === false){
+		if (strpos($where, '/') === false) {
 			$tmp_parsed_url['host'] = $where;
 			$tmp_parsed_url['parts'] = [];
-		}else{
+		} else {
 			list($tmp_parsed_url['host'], $where) = explode('/', $where, 2);
 			$tmp_parsed_url['parts'] = array_values(array_filter(explode('/', $where)));
 		}
 
-		foreach($tmp_parsed_url['parts'] as $key => $part){
+		foreach ($tmp_parsed_url['parts'] as $key => $part) {
 			$parsed_part = [
 				'type' => null,
 				'criterias' => [],
@@ -170,30 +171,30 @@ class Resource extends RenderNode implements Stream
 			];
 
 			// Get sub delim if present
-			if(strpos($part, ';') !== false){
+			if (strpos($part, ';') !== false) {
 				list($part, $parsed_part['sub_delim_part']) = explode(';', $part, 2);
 			}
 
 			// if there is (...), parse the CSV input
 			$first_opening_parenthesis = strpos($part, '(');
-			if($first_opening_parenthesis !== false){
+			if ($first_opening_parenthesis !== false) {
 				$length = strlen($part);
 
-				if($length < 2 || empty($part[$length-1]) || $part[$length-1] !== ')'){
+				if ($length < 2 || empty($part[$length - 1]) || $part[$length - 1] !== ')') {
 					return nullstate::ambiguous;
 				}
 
-				$parsed_part['parsed_csv'] = str_getcsv(substr($part, $first_opening_parhenthesis+1, $length - $first_opening_parenthesis - 1));
+				$parsed_part['parsed_csv'] = str_getcsv(substr($part, $first_opening_parhenthesis + 1, $length - $first_opening_parenthesis - 1));
 				$part = substr($part, 0, $first_opening_parenthesis);
 
-				if($parsed_part['parsed_csv'] === [] || $parsed_part['parsed_csv'] === [null]){
+				if ($parsed_part['parsed_csv'] === [] || $parsed_part['parsed_csv'] === [null]) {
 					return nullstate::ambiguous;
 				}
 			}
 
 			// If there is no [, there's nothing else to do
-			if(strpos($part, '[') === false){
-				if($parsed_part['parsed_csv'] !== null){
+			if (strpos($part, '[') === false) {
+				if ($parsed_part['parsed_csv'] !== null) {
 					return nullstate::ambiguous;
 				}
 
@@ -206,13 +207,13 @@ class Resource extends RenderNode implements Stream
 			list($parsed_part['type'], $part) = explode('[', $part, 2);
 
 			// Since we removed the opening [, also remove the closing ]
-			if(substr($part, -1) !== ']'){
+			if (substr($part, -1) !== ']') {
 				return nullstate::ambiguous;
 			}
 
 			$part = substr($part, 0, -1);
 
-			for(
+			for (
 				$i = 0,
 				$part_max_length = strlen($part);
 
@@ -221,10 +222,10 @@ class Resource extends RenderNode implements Stream
 				$part = substr($part, $i),
 				$part_max_length = strlen($part),
 				$i = 0
-			){
+			) {
 				// First, check if we're at the end of the criteria block
-				if($part[0] === ']'){
-					if($part_max_length === 1 || $part[1] !== '['){
+				if ($part[0] === ']') {
+					if ($part_max_length === 1 || $part[1] !== '[') {
 						return nullstate::ambiguous;
 					}
 
@@ -239,17 +240,16 @@ class Resource extends RenderNode implements Stream
 				}
 
 				// Second, get through any white space
-				for(
-					;
+				for (;
 					$i < $part_max_length
-				 && match($part[$i]){
-						' ', "\r", "\n" => true,
-						default => false
-					};
+						&& match ($part[$i]) {
+							' ', "\r", "\n" => true,
+							default => false
+						};
 					$i++
 				);
 
-				if($i !== 0){
+				if ($i !== 0) {
 					$parsed_part['criterias'][] = [
 						'type' => 'whitespace',
 						'token' => substr($part, 0, $i)
@@ -259,10 +259,10 @@ class Resource extends RenderNode implements Stream
 				}
 
 				// Next, try matching a string
-				if($part[$i] === '"' || $part[$i] === "'"){
+				if ($part[$i] === '"' || $part[$i] === "'") {
 					$start_i = $i;
 
-					for($i++; $i < $part_max_length && $part[$i] !== $part[$start_i]; $i++);
+					for ($i++; $i < $part_max_length && $part[$i] !== $part[$start_i]; $i++);
 
 					$i++;
 
@@ -275,23 +275,21 @@ class Resource extends RenderNode implements Stream
 				}
 
 				// Next, try to match a number
-				for(
-					;
+				for (;
 					$i < $part_max_length
-				 && $part[$i] >= '0'
-				 && $part[$i] <= '9'
-					;
+						&& $part[$i] >= '0'
+						&& $part[$i] <= '9';
 					$i++
 				);
 
-				if(
+				if (
 					$i > 0
-				 && (
+					&& (
 						$i === $part_max_length
-					 || $part[$i] === ']'
-					 || $part[$i] === ','
+						|| $part[$i] === ']'
+						|| $part[$i] === ','
 					)
-				){
+				) {
 					$parsed_part['criterias'][] = [
 						'type' => 'int',
 						'token' => intval(substr($part, 0, $i))
@@ -301,18 +299,18 @@ class Resource extends RenderNode implements Stream
 				}
 
 				// If the number ends with a - and $i is 2, maybe it's a date?
-				if(
+				if (
 					$i === 2
-				 && $i + 10 <= $part_max_length
-				 && $part[2] === '-'
-				 && ($part[3] >= '0' && $part[3] <= '9')
-				 && ($part[4] >= '0' && $part[4] <= '9')
-				 && $part[5] === '-'
-				 && ($part[6] >= '0' && $part[6] <= '9')
-				 && ($part[7] >= '0' && $part[7] <= '9')
-				 && ($part[8] >= '0' && $part[8] <= '9')
-				 && ($part[9] >= '0' && $part[9] <= '9')
-				){
+					&& $i + 10 <= $part_max_length
+					&& $part[2] === '-'
+					&& ($part[3] >= '0' && $part[3] <= '9')
+					&& ($part[4] >= '0' && $part[4] <= '9')
+					&& $part[5] === '-'
+					&& ($part[6] >= '0' && $part[6] <= '9')
+					&& ($part[7] >= '0' && $part[7] <= '9')
+					&& ($part[8] >= '0' && $part[8] <= '9')
+					&& ($part[9] >= '0' && $part[9] <= '9')
+				) {
 					$parsed_part['criterias'][] = [
 						'type' => 'date',
 						'token' => substr($part, 0, 10)
@@ -323,21 +321,19 @@ class Resource extends RenderNode implements Stream
 				}
 
 				// If the number ends with a dot, maybe it's a range?
-				if(
+				if (
 					$i > 0
-				 && $i !== $part_max_length
-				 && $part[$i] === '.'
-				 && $i + 2 <= $part_max_length
-				 && $part[$i+1] === '.'
-				){
+					&& $i !== $part_max_length
+					&& $part[$i] === '.'
+					&& $i + 2 <= $part_max_length
+					&& $part[$i + 1] === '.'
+				) {
 					$i += 2;
 
-					for(
-						;
-				 		$i < $part_max_length
-					 && $part[$i] >= '0'
-					 && $part[$i] <= '9'
-						;
+					for (;
+						$i < $part_max_length
+							&& $part[$i] >= '0'
+							&& $part[$i] <= '9';
 						$i++
 					);
 
@@ -350,31 +346,29 @@ class Resource extends RenderNode implements Stream
 				}
 
 				// If the number doesn't end with a ], assume it's part of an identifier?
-				for(
-					;
-				 	$i < $part_max_length
-				 && (
-					 	(
-							$part[$i] >= '0'
-						 && $part[$i] <= '9'
-						)
-					 || (
-							$part[$i] >= 'a'
-						 && $part[$i] <= 'z'
-					 )
-					 || (
-							$part[$i] >= 'A'
-						 && $part[$i] <= 'Z'
-					 )
-					 || $part[$i] === '_'
-					 || $part[$i] === '-'
-					 || $part[$i] === '.'
-				)
-					;
+				for (;
+					$i < $part_max_length
+						&& (
+							(
+								$part[$i] >= '0'
+								&& $part[$i] <= '9'
+							)
+							|| (
+								$part[$i] >= 'a'
+								&& $part[$i] <= 'z'
+							)
+							|| (
+								$part[$i] >= 'A'
+								&& $part[$i] <= 'Z'
+							)
+							|| $part[$i] === '_'
+							|| $part[$i] === '-'
+							|| $part[$i] === '.'
+						);
 					$i++
 				);
 
-				if($i !== 0){
+				if ($i !== 0) {
 					$parsed_part['criterias'][] = [
 						'type' => 'identifier',
 						'token' => substr($part, 0, $i)
@@ -384,8 +378,8 @@ class Resource extends RenderNode implements Stream
 				}
 
 				// match <= and >= and == and !=
-				if($part_max_length >= 2 && $part[1] === '='){
-					switch($part[0]){
+				if ($part_max_length >= 2 && $part[1] === '=') {
+					switch ($part[0]) {
 						case '>':
 							$parsed_part['criterias'][] = [
 								'type' => 'greater_equal_to',
@@ -425,7 +419,7 @@ class Resource extends RenderNode implements Stream
 				}
 
 				// Match , and : and < and >
-				switch($part[0]){
+				switch ($part[0]) {
 					case ',':
 						$parsed_part['criterias'][] = [
 							'type' => 'comma',
@@ -475,36 +469,43 @@ class Resource extends RenderNode implements Stream
 		return $this;
 	}
 
-	public function sort(\Stringable|string|Aspect $by, bool $ascending = true){
-		if( !($by instanceof Aspect) )
-			$by = new field(discover::field, content: $by );
+	public function sort(\Stringable|string|Aspect $by, bool $ascending = true)
+	{
+		if (!($by instanceof Aspect))
+			$by = new field(discover::field, content: $by);
 
 		$by[quality] = $by[quality] ?? $ascending;
-		$this->aspects[sort]->nodes[ $by->label ] = $by;
+		$this->aspects[sort]->nodes[$by->label] = $by;
 	}
-	
-	public function weigh(field|Aspect $by, int $weight = 1){
+
+	public function weigh(field|Aspect $by, int $weight = 1)
+	{
 		$by[quantity] = $by[quantity] ?? $weight;
 		$this->aspects[sort]->nodes[]	= $by;
 	}
-	public function pick(Aspect $by){
+	public function pick(Aspect $by)
+	{
 		$this->aspects[pick]->nodes[]	= $by;
 	}
-	public function sift(Aspect $by){
+	public function sift(Aspect $by)
+	{
 		$this->aspects[sift]->nodes[]	= $by;
 	}
-	public function divide(Aspect $by){
+	public function divide(Aspect $by)
+	{
 		$this->aspects[divide]->nodes[]	= $by;
 	}
-	public function filter(Aspect $by){
+	public function filter(Aspect $by)
+	{
 		$this->aspects[filter]->nodes[]	= $by;
 	}
 
 	// Use Service's Encode/Decode classes to convert $this to $type
-	public function as(RenderNode $type){
+	public function as(RenderNode $type)
+	{
 		$typename = $type::class || $type->__toString();
 		$service = new Service(
-			\Approach\Service\flow::in, 
+			\Approach\Service\flow::in,
 			format_in: format::mysql,
 			format_out: format::$$typename,
 			target_in: target::resource,
@@ -512,7 +513,6 @@ class Resource extends RenderNode implements Stream
 			input: [$this]
 		);
 		return $service->payload;
-
 	}
 
 	// Mimic preg_match('/^(\d+\.\.)(\d+)$/', $value, $matches) with strpos()
@@ -525,7 +525,8 @@ class Resource extends RenderNode implements Stream
 	 * @return array The payload of the service
 	 * @access public
 	 */
-	public function load($service, RenderNode $source){
+	public function load($service, RenderNode $source)
+	{
 		return $service->payload;
 	}
 
@@ -536,20 +537,21 @@ class Resource extends RenderNode implements Stream
 	 * @param \Approach\Render\Node $type                                                                                                                                                                                                                                                                                               
 	 * @access public
 	 */
-	public function save($exchange, RenderNode $type){
+	public function save($exchange, RenderNode $type)
+	{
 		return false;
 	}
 
 
 	/**
 	 * Mint a resource class file
-     * 
-     * TODO: Use Imprint & Patterns instead
-     *      - Requires Loop node
-     *      - Even better if made as Components in a Composition
-     *      - When both are done
-     *          - make these arguments into a new Render\Node format
-     *          - add Decoder and Encoder for Services to exchange  Render\ClassMetadata with Resource\Type
+	 * 
+	 * TODO: Use Imprint & Patterns instead
+	 *      - Requires Loop node
+	 *      - Even better if made as Components in a Composition
+	 *      - When both are done
+	 *          - make these arguments into a new Render\Node format
+	 *          - add Decoder and Encoder for Services to exchange  Render\ClassMetadata with Resource\Type
 	 */
 	public function MintResourceClass(
 		string $path,
@@ -561,18 +563,16 @@ class Resource extends RenderNode implements Stream
 		array $properties = [],
 		array $methods = [],
 		$overwrite = false
-	): void
-	{
+	): void {
 		// If the file does not exist, then build it
-		if (!file_exists($path) || $overwrite)
-		{
+		if (!file_exists($path) || $overwrite) {
 			// Grab the last part of the class name for the label
 			$class = explode('\\', $class);
 			$class = $class[count($class) - 1];
 
 			$extends = $extends ?? '\Approach\Resource\MariaDB\Server';
 			$namespace = $namespace ?? \Approach\Scope::$Active->project . '\Resource';
-			$uses = $uses ?? [ static::class, ];
+			$uses = $uses ?? [static::class,];
 
 			$content = '<?php ' . PHP_EOL . PHP_EOL;
 
@@ -580,28 +580,40 @@ class Resource extends RenderNode implements Stream
 			$content .= 'namespace ' . $namespace . ';' . PHP_EOL . PHP_EOL;
 
 			foreach ($uses as $use)	$content .= 'use ' . $use . ';' . PHP_EOL;
+            $profilePath = $namespace;
+            // make it into \Resource\Aspect\MariaDB
+            $profilePath = str_replace('\\Resource\\MariaDB', '\\Resource\\MariaDB\\Aspect', $profilePath);
+
+            $content .= 'use ' . $profilePath . '\\' . $class . '_user_trait;' . PHP_EOL . PHP_EOL;
 
 			// Write the class
 			$content .= 'class ' . $class . ' extends ' . $extends . '{' . PHP_EOL;
-				$content .= "\t".'// Change the '.$class.'_user_trait to add functionality to this generated class' . PHP_EOL;
-				$content .= "\t" . 'use ' . $class . '_user_trait;' . PHP_EOL . PHP_EOL;
-				foreach ($constants as $constant)	$content .= "\t".'const ' . $constant . ';' . PHP_EOL;
-				foreach ($properties as $property)	$content .= "\t".'public ' . $property . ';' . PHP_EOL;
-				foreach ($methods as $method)		$content .= "\t".$method . PHP_EOL;
+			$content .= "\t" . '// Change the ' . $class . '_user_trait to add functionality to this generated class' . PHP_EOL;
+            //FIXME: Uncomment this and change the order so that user_trait is included first
+//			$content .= "\t" . 'use ' . $class . '_user_trait;' . PHP_EOL . PHP_EOL;
+			foreach ($constants as $constant)	$content .= "\t" . 'const ' . $constant . ';' . PHP_EOL;
+			foreach ($properties as $property)	$content .= "\t" . 'public ' . $property . ';' . PHP_EOL;
+			foreach ($methods as $method)		$content .= "\t" . $method . PHP_EOL;
 			$content .= '}' . PHP_EOL;
 
-            $file_dir = dirname($path);
+			$file_dir = dirname($path);
+            $profileFileDir = str_replace('Resource/MariaDB', 'Resource/MariaDB/Aspect', $file_dir);
 
-            // Make sure the path/ and path/user_trait.php exist
-            if (!file_exists($file_dir)) mkdir($file_dir, 0770, true);
-            if (!file_exists($file_dir . '/'.$class.'_user_trait.php')) {
-                $user_trait = 
-'<?php
+//            $namespacePath = $profilePath . '\\'.$class;
 
-namespace '.$namespace.';
+			// Make sure the path/ and path/user_trait.php exist
+			if (!file_exists($file_dir)) mkdir($file_dir, 0770, true);
+			if (!file_exists($file_dir . '/' . $class . '_user_trait.php')) {
+				$user_trait =
+					'<?php
 
-trait '.$class.'_user_trait
+namespace ' . $profilePath . ';
+
+// use ' . $profilePath . ';
+
+trait ' . $class . '_user_trait
 {
+	//use profile;
 	/**** User Trait ****
 	 * 
 	 *  This trait is used to add user functionality to an Approach Resource.
@@ -625,11 +637,13 @@ trait '.$class.'_user_trait
 	 * 
 	 */
 }';
-
-                $file = fopen($file_dir . '/'.$class.'_user_trait.php', 'w');
-                fwrite($file, $user_trait);
-                fclose($file);
-            }
+                if (!is_dir($profileFileDir)) {
+                    mkdir($profileFileDir, 0777, true);
+                }
+				$file = fopen($profileFileDir . '/' . $class . '_user_trait.php', 'w');
+				fwrite($file, $user_trait);
+				fclose($file);
+			}
 
 			$file = fopen($path, 'w');
 			fwrite($file, $content);
@@ -637,173 +651,170 @@ trait '.$class.'_user_trait
 		}
 	}
 
-    /**
-     * Scan the following directories for resources:
-     *     - path::get(path::installed) . '/Resource' and all subdirectories
-     *     - path::get(path::project) . '/Resource' and all subdirectories
-     *     - In both cases, ignore the following directories:
-     *          - ../Resource/wild
-     *          - ../Resource/vendor
-     *          - ../Resource/community
-     *          - ../Resource/extension
-     *          - ../Resource/test
-     *          - TODO: make scanning these configurable
-     * 
-     * If a PHP file is found, check if that name is a class that extends Resource
-     * If so, call the method discover() on that class
-     * 
-     */
-    public function discover()
-    {
+	/**
+	 * Scan the following directories for resources:
+	 *     - path::get(path::installed) . '/Resource' and all subdirectories
+	 *     - path::get(path::project) . '/Resource' and all subdirectories
+	 *     - In both cases, ignore the following directories:
+	 *          - ../Resource/wild
+	 *          - ../Resource/vendor
+	 *          - ../Resource/community
+	 *          - ../Resource/extension
+	 *          - ../Resource/test
+	 *          - TODO: make scanning these configurable
+	 * 
+	 * If a PHP file is found, check if that name is a class that extends Resource
+	 * If so, call the method discover() on that class
+	 * 
+	 */
+	public function discover()
+	{
 
-        $paths = [
-            'approach'=>path::installed->get() . '/Resource',
-            'project'=>path::project->get() . '/Resource',
-        ];
-        $ignore = [
-            'wild',
-            'vendor',
-            'community',
-            'extension',
-            'test',
-        ];
+		$paths = [
+			'approach' => path::installed->get() . '/Resource',
+			'project' => path::project->get() . '/Resource',
+		];
+		$ignore = [
+			'wild',
+			'vendor',
+			'community',
+			'extension',
+			'test',
+		];
 
-        // We don't want to pollute the child classes with methods that are not
-        // intended to be used by the end user. So we will use a closure to check
-        // part of the path directly following /Resource/ against $ignore[]
-        $check_criteria = function (string|Stringable $path) {
-            $rejection = false;
-            $roots = [
-                path::installed->get() . '/Resource',
-                path::project->get() . '/Resource',
-            ];
-            $ignore = [
-                'wild',
-                'vendor',
-                'community',
-                'extension',
-                'test',
-            ];
+		// We don't want to pollute the child classes with methods that are not
+		// intended to be used by the end user. So we will use a closure to check
+		// part of the path directly following /Resource/ against $ignore[]
+		$check_criteria = function (string|Stringable $path) {
+			$rejection = false;
+			$roots = [
+				path::installed->get() . '/Resource',
+				path::project->get() . '/Resource',
+			];
+			$ignore = [
+				'wild',
+				'vendor',
+				'community',
+				'extension',
+				'test',
+			];
 
-            $path = (string) $path;
-            $path = explode('/', $path);
+			$path = (string) $path;
+			$path = explode('/', $path);
 
-            // Get the index following /Resource/ but after $roots[]
-            $index = 0;
-            $root_matched = false;
-            $root_length = 0;
-            $which_root = null;
-            foreach ($roots as $rootpath) {                
-                // check  //my/filesystem/company/Resource/not-this/project/src/Resource/[*** this ***]/is/Resource/[not this]/we/want
-                // Make sure we are aligned with the root
-                $root = explode('/', $rootpath);
-                $root_length = count($root);
+			// Get the index following /Resource/ but after $roots[]
+			$index = 0;
+			$root_matched = false;
+			$root_length = 0;
+			$which_root = null;
+			foreach ($roots as $rootpath) {
+				// check  //my/filesystem/company/Resource/not-this/project/src/Resource/[*** this ***]/is/Resource/[not this]/we/want
+				// Make sure we are aligned with the root
+				$root = explode('/', $rootpath);
+				$root_length = count($root);
 
-                // If the root is longer than the path, then we are not in a root directory
-                if ($root_length > count($path)) continue;
+				// If the root is longer than the path, then we are not in a root directory
+				if ($root_length > count($path)) continue;
 
 
-                // Check if the root matches the path until the root length
-                for ($i = 0; $i < $root_length; $i++) 
-                {
-                    if( // If path does not line up with root
-                        $path[$i] !== $root[$i] || (
-                            // or root/Resource 
-                            $path[$i] === 'Resource' && $path[$i-1] === end($root) 
-                        )
-                    ) {
-                        // Reject the path
-                        $index = 0;
-                        $which_root = null;
-                        break;
-                    }
+				// Check if the root matches the path until the root length
+				for ($i = 0; $i < $root_length; $i++) {
+					if ( // If path does not line up with root
+						$path[$i] !== $root[$i] || (
+							// or root/Resource 
+							$path[$i] === 'Resource' && $path[$i - 1] === end($root)
+						)
+					) {
+						// Reject the path
+						$index = 0;
+						$which_root = null;
+						break;
+					}
 
-                    $index = $i + 1;
-                    $which_root = $rootpath;
-                }
+					$index = $i + 1;
+					$which_root = $rootpath;
+				}
 
-                if ($index > 0) {
-                    $root_matched = true;
-                    break;
-                }
-            }
-            
-            
-            
-            // If the index is not found, then we are not in a root directory
-            if ( $root_matched ) return false;
+				if ($index > 0) {
+					$root_matched = true;
+					break;
+				}
+			}
 
-            // If the index is found, then check if the next index is in $ignore
-            if (in_array($path[$index], $ignore)) return false;
 
-            if( !$which_root ) return false;
 
-            // If we made it this far, then we are not in an ignored directory
-            return $which_root;
-        };
+			// If the index is not found, then we are not in a root directory
+			if ($root_matched) return false;
 
-        foreach ($paths as $which => $path) {
-            $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path));
+			// If the index is found, then check if the next index is in $ignore
+			if (in_array($path[$index], $ignore)) return false;
 
-            // Bail out fast if the path does not exist by checking multiple skip criteria
-            foreach ($files as $file) {
-                if ($file->isDir()) continue;
-                if ($file->getExtension() !== 'php') continue;
+			if (!$which_root) return false;
 
-                $pathname = $file->getPathname();
+			// If we made it this far, then we are not in an ignored directory
+			return $which_root;
+		};
 
-                // Check if the path is in a valid directory
-                if (!$check_criteria($pathname)) continue;
+		foreach ($paths as $which => $path) {
+			$files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path));
 
-                // Move the cursor to the end of the root directory
-                $cursor = strpos($pathname, $path);
-                if (!$cursor) continue;                          // If root is not found, then invalid path
+			// Bail out fast if the path does not exist by checking multiple skip criteria
+			foreach ($files as $file) {
+				if ($file->isDir()) continue;
+				if ($file->getExtension() !== 'php') continue;
 
-                // Get the first occurrence of /Resource/ after the root
-                $cursor = strpos($pathname, '/Resource/', $cursor);
-                if(!$cursor) continue;                          // If /Resource/ is not found, then invalid path
-                
-                // If /Resource/ is found, then start after it's last occurrence
-                $cursor += 10;
+				$pathname = $file->getPathname();
 
-                // Get the path after /Resource/ and before .php
-                $possible = substr($pathname, $cursor, -4);
+				// Check if the path is in a valid directory
+				if (!$check_criteria($pathname)) continue;
 
-                // normalize path Windows/Mac/.. to Linux
-                $possible = str_replace('\\', '/', $possible);                
+				// Move the cursor to the end of the root directory
+				$cursor = strpos($pathname, $path);
+				if (!$cursor) continue;                          // If root is not found, then invalid path
 
-                // oddly, now we have to reverse that process to go to PSR-4
-                // making $possible the class name, possibly
-                $possible = str_replace('/', '\\', $possible);
+				// Get the first occurrence of /Resource/ after the root
+				$cursor = strpos($pathname, '/Resource/', $cursor);
+				if (!$cursor) continue;                          // If /Resource/ is not found, then invalid path
 
-                $prefix = '';
-                if ($which === 'approach') {
-                    $prefix = '\\Approach\\Resource\\';
-                }
-                elseif($which === 'project') {
-                    $prefix = '\\'.Scope::$Active->project.'\\Resource\\';
-                }
+				// If /Resource/ is found, then start after it's last occurrence
+				$cursor += 10;
 
-                $possible = $prefix . $possible;
+				// Get the path after /Resource/ and before .php
+				$possible = substr($pathname, $cursor, -4);
 
-                // Check if the class exists
-                if (!class_exists($possible)) continue;
+				// normalize path Windows/Mac/.. to Linux
+				$possible = str_replace('\\', '/', $possible);
 
-                // Check if the class extends Resource
-                if (is_subclass_of($possible, Resource::class)){
-                    // Call the static method discover() on that class
-                    try{
-                        $possible::discover();
-                    }
-                    catch(\Throwable $e) {
-                        echo 'Class instantiation failed: ' . $possible . PHP_EOL. $e->getMessage() . PHP_EOL;
-                    }
-                }
+				// oddly, now we have to reverse that process to go to PSR-4
+				// making $possible the class name, possibly
+				$possible = str_replace('/', '\\', $possible);
 
-                // Otherwise do nothing, not a resource
-            }
-        }
-    }
+				$prefix = '';
+				if ($which === 'approach') {
+					$prefix = '\\Approach\\Resource\\';
+				} elseif ($which === 'project') {
+					$prefix = '\\' . Scope::$Active->project . '\\Resource\\';
+				}
+
+				$possible = $prefix . $possible;
+
+				// Check if the class exists
+				if (!class_exists($possible)) continue;
+
+				// Check if the class extends Resource
+				if (is_subclass_of($possible, Resource::class)) {
+					// Call the static method discover() on that class
+					try {
+						$possible::discover();
+					} catch (\Throwable $e) {
+						echo 'Class instantiation failed: ' . $possible . PHP_EOL . $e->getMessage() . PHP_EOL;
+					}
+				}
+
+				// Otherwise do nothing, not a resource
+			}
+		}
+	}
 
 	public static function get_aspect_directory()
 	{
@@ -812,13 +823,13 @@ trait '.$class.'_user_trait
 			static::class	 	// Get the class name
 		);
 		$class = end($class);	// Get the last part of the class name
-		
+
 		// Get the directory of the class
 		$aspect_directory = dirname(								// Get the directory of the file
 			(new \ReflectionClass(static::class))->getFileName()	// Get the file name of the class
 		);
 
-		$aspect_directory .= '/'.$class.'/';				// Add the aspects directory to the path
+		$aspect_directory .= '/' . $class . '/';				// Add the aspects directory to the path
 
 		// Are we on Windows?
 		$is_windows = (strtolower(substr(PHP_OS, 0, 3)) === 'win');
@@ -828,7 +839,7 @@ trait '.$class.'_user_trait
 
 		// Make sure the path exists, recursively
 		if (!file_exists($aspect_directory)) mkdir($aspect_directory, 0770, true);
-		
+
 		return $aspect_directory;
 	}
 
@@ -839,13 +850,13 @@ trait '.$class.'_user_trait
 	 * @param string $resource_class_path The path to the class file, eg 'Resource'
 	 * @access public
 	 * @static
-	 */ 
+	 */
 	protected static function __update_composer_autoloader(
 		string $resource_root = null,
 		string $resource_class = null
-	){
+	) {
 		$resource_root = $resource_root ?? path::resource->get();
-		$resource_ns = '\\'.Scope::$Active->project . '\\Resource';
+		$resource_ns = '\\' . Scope::$Active->project . '\\Resource';
 		$classname = $resource_ns . '\\' . $resource_class;
 
 		spl_autoload_register(function ($classname) use ($resource_root, $resource_class) {
