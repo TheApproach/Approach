@@ -1,16 +1,16 @@
 <?php
 /*
-    Resource
-    (noun)
+	Resource
+	(noun)
 
-    - Something that is available for use - or that can be used for support or help.
-    - An available supply that can be drawn on when needed.
-    - The ability to deal with a difficult or troublesome situation effectively; resourcefulness.
-    - The total means available for infrastructure development, such as mineral wealth, labor force, and armaments.
-    - The total means available to a companny for increasing production or profit, including plant, labor, and raw material; assets.
-    - Such means considered individually.
+	- Something that is available for use - or that can be used for support or help.
+	- An available supply that can be drawn on when needed.
+	- The ability to deal with a difficult or troublesome situation effectively; resourcefulness.
+	- The total means available for infrastructure development, such as mineral wealth, labor force, and armaments.
+	- The total means available to a companny for increasing production or profit, including plant, labor, and raw material; assets.
+	- Such means considered individually.
 
-    From The American Heritage® Dictionary of the English Language, 5th Edition
+	From The American Heritage® Dictionary of the English Language, 5th Edition
 */
 
 namespace Approach\Resource;
@@ -33,6 +33,7 @@ use \Approach\Service\Service;
 use \Approach\Service\flow;
 use \Approach\Service\format;
 use \Approach\Service\target;
+use Exception;
 use Stringable;
 
 abstract class accessor
@@ -184,7 +185,7 @@ class Resource extends RenderNode implements Stream
 					return nullstate::ambiguous;
 				}
 
-				$parsed_part['parsed_csv'] = str_getcsv(substr($part, $first_opening_parhenthesis + 1, $length - $first_opening_parenthesis - 1));
+				$parsed_part['parsed_csv'] = str_getcsv(substr($part, $first_opening_parenthesis + 1, $length - $first_opening_parenthesis - 1));
 				$part = substr($part, 0, $first_opening_parenthesis);
 
 				if ($parsed_part['parsed_csv'] === [] || $parsed_part['parsed_csv'] === [null]) {
@@ -534,7 +535,7 @@ class Resource extends RenderNode implements Stream
 	 * Should ideally return type-safe true or false
 	 *
 	 * @param \Approach\Render\KeyedNode $exchange Any compatible payload container, ideally and object of type ExchangeTransport
-	 * @param \Approach\Render\Node $type                                                                                                                                                                                                                                                                                               
+	 * @param \Approach\Render\Node $type																																																																							   
 	 * @access public
 	 */
 	public function save($exchange, RenderNode $type)
@@ -547,11 +548,11 @@ class Resource extends RenderNode implements Stream
 	 * Mint a resource class file
 	 * 
 	 * TODO: Use Imprint & Patterns instead
-	 *      - Requires Loop node
-	 *      - Even better if made as Components in a Composition
-	 *      - When both are done
-	 *          - make these arguments into a new Render\Node format
-	 *          - add Decoder and Encoder for Services to exchange  Render\ClassMetadata with Resource\Type
+	 *	  - Requires Loop node
+	 *	  - Even better if made as Components in a Composition
+	 *	  - When both are done
+	 *		  - make these arguments into a new Render\Node format
+	 *		  - add Decoder and Encoder for Services to exchange  Render\ClassMetadata with Resource\Type
 	 */
 	public function MintResourceClass(
 		string $path,
@@ -580,40 +581,35 @@ class Resource extends RenderNode implements Stream
 			$content .= 'namespace ' . $namespace . ';' . PHP_EOL . PHP_EOL;
 
 			foreach ($uses as $use)	$content .= 'use ' . $use . ';' . PHP_EOL;
-            $profilePath = $namespace;
-            // make it into \Resource\Aspect\MariaDB
-            $profilePath = str_replace('\\Resource\\MariaDB', '\\Resource\\MariaDB\\Aspect', $profilePath);
-
-            $content .= 'use ' . $profilePath . '\\' . $class . '_user_trait;' . PHP_EOL . PHP_EOL;
+			$profilePath = $namespace;
+			// make it into \Resource\Aspect\MariaDB
+			$profilePath = str_replace('\\Resource\\MariaDB', '\\Resource\\MariaDB\\Aspect', $profilePath);
 
 			// Write the class
 			$content .= 'class ' . $class . ' extends ' . $extends . '{' . PHP_EOL;
-			$content .= "\t" . '// Change the ' . $class . '_user_trait to add functionality to this generated class' . PHP_EOL;
-            //FIXME: Uncomment this and change the order so that user_trait is included first
-//			$content .= "\t" . 'use ' . $class . '_user_trait;' . PHP_EOL . PHP_EOL;
+			$content .= "\t" . '// Change the user_trait to add functionality to this generated class' . PHP_EOL;
 			foreach ($constants as $constant)	$content .= "\t" . 'const ' . $constant . ';' . PHP_EOL;
 			foreach ($properties as $property)	$content .= "\t" . 'public ' . $property . ';' . PHP_EOL;
 			foreach ($methods as $method)		$content .= "\t" . $method . PHP_EOL;
 			$content .= '}' . PHP_EOL;
 
 			$file_dir = dirname($path);
-            $profileFileDir = str_replace('Resource/MariaDB', 'Resource/MariaDB/Aspect', $file_dir);
+			$profileFileDir = str_replace('Resource/MariaDB', 'Resource/MariaDB/Aspect', $file_dir);
+			$profileFileDir .= '/' . $class;
 
-//            $namespacePath = $profilePath . '\\'.$class;
+			//			$namespacePath = $profilePath . '\\'.$class;
 
 			// Make sure the path/ and path/user_trait.php exist
 			if (!file_exists($file_dir)) mkdir($file_dir, 0770, true);
-			if (!file_exists($file_dir . '/' . $class . '_user_trait.php')) {
+			if (!file_exists($profileFileDir . '/' . 'user_trait.php')) {
 				$user_trait =
 					'<?php
 
-namespace ' . $profilePath . ';
+namespace ' . $profilePath . '\\' . $class . ';
 
-// use ' . $profilePath . ';
-
-trait ' . $class . '_user_trait
+trait user_trait
 {
-	//use profile;
+	use profile;
 	/**** User Trait ****
 	 * 
 	 *  This trait is used to add user functionality to an Approach Resource.
@@ -623,13 +619,12 @@ trait ' . $class . '_user_trait
 	 * 
 	 *  This is a good place to use hooks and/or override methods to achieve
 	 *  desired functionality.
-	 * 
+	 *	 
 	 *  Examples include: 
-	 *    - Adding a user_id property
-	 *    - Changing the behavior of the load() or save() method
-	 *    - Adding behavior with preload(), onsave(), postpush(), onpull(), preacquire(), etc..
-	 *    - Adding functions that work with your custom operations and aspects
-	 *    - Tieing into the map system deeper
+	 *	- Changing the behavior of the load() or save()
+	 *	- Adding behavior with preload(), onsave(), postpush(), onpull(), preacquire(), etc..
+	 *	- Adding functions that work with your custom operations and aspects
+	 *	- Tieing into the map system deeper
 	 * 
 	 * This trait is automatically included in the class that is generated, so
 	 * you can use it immediately. This file is here for your convenience
@@ -637,10 +632,10 @@ trait ' . $class . '_user_trait
 	 * 
 	 */
 }';
-                if (!is_dir($profileFileDir)) {
-                    mkdir($profileFileDir, 0777, true);
-                }
-				$file = fopen($profileFileDir . '/' . $class . '_user_trait.php', 'w');
+				if (!is_dir($profileFileDir)) {
+					mkdir($profileFileDir, 0777, true);
+				}
+				$file = fopen($profileFileDir . '/' . 'user_trait.php', 'w');
 				fwrite($file, $user_trait);
 				fclose($file);
 			}
@@ -653,15 +648,15 @@ trait ' . $class . '_user_trait
 
 	/**
 	 * Scan the following directories for resources:
-	 *     - path::get(path::installed) . '/Resource' and all subdirectories
-	 *     - path::get(path::project) . '/Resource' and all subdirectories
-	 *     - In both cases, ignore the following directories:
-	 *          - ../Resource/wild
-	 *          - ../Resource/vendor
-	 *          - ../Resource/community
-	 *          - ../Resource/extension
-	 *          - ../Resource/test
-	 *          - TODO: make scanning these configurable
+	 *	 - path::get(path::installed) . '/Resource' and all subdirectories
+	 *	 - path::get(path::project) . '/Resource' and all subdirectories
+	 *	 - In both cases, ignore the following directories:
+	 *		  - ../Resource/wild
+	 *		  - ../Resource/vendor
+	 *		  - ../Resource/community
+	 *		  - ../Resource/extension
+	 *		  - ../Resource/test
+	 *		  - TODO: make scanning these configurable
 	 * 
 	 * If a PHP file is found, check if that name is a class that extends Resource
 	 * If so, call the method discover() on that class
@@ -770,11 +765,11 @@ trait ' . $class . '_user_trait
 
 				// Move the cursor to the end of the root directory
 				$cursor = strpos($pathname, $path);
-				if (!$cursor) continue;                          // If root is not found, then invalid path
+				if (!$cursor) continue;						  // If root is not found, then invalid path
 
 				// Get the first occurrence of /Resource/ after the root
 				$cursor = strpos($pathname, '/Resource/', $cursor);
-				if (!$cursor) continue;                          // If /Resource/ is not found, then invalid path
+				if (!$cursor) continue;						  // If /Resource/ is not found, then invalid path
 
 				// If /Resource/ is found, then start after it's last occurrence
 				$cursor += 10;
@@ -868,5 +863,215 @@ trait ' . $class . '_user_trait
 				require_once $resource_class;
 			}
 		});
+	}
+
+	// static function parseConditions($conditionsStr): array
+	// {
+	// 	$conditions = [];
+	// 	$rawConditionPairs = explode(',', $conditionsStr);
+
+	// 	foreach ($rawConditionPairs as $pair) {
+	// 		$splitPair = explode(':', $pair);
+
+	// 		$key = trim($splitPair[0]);
+	// 		$operator = match (count($splitPair)) {
+	// 			1 => '=',
+	// 			2 => trim($splitPair[1]),
+	// 			default => ''
+	// 		};
+
+	// 		switch ($operator) {
+	// 			case '=':
+	// 			case '<>':
+	// 			case '!=':
+	// 			case '<':
+	// 			case '>':
+	// 			case '<=':
+	// 			case '>=':
+	// 			case 'like':
+	// 			case 'in':
+	// 				$values = [trim($splitPair[1])];
+	// 				break;
+	// 			case 'between':
+	// 				if (count($splitPair) != 3 || !is_numeric($splitPair[2])) {
+	// 					throw new Exception("Invalid condition '$pair'. Please provide correct syntax.");
+	// 				}
+	// 				$values = [intval($splitPair[1]), intval($splitPair[2])];
+	// 				break;
+	// 			case 'jsoncontains':
+	// 				if (count($splitPair) < 3) {
+	// 					throw new Exception("Invalid condition '$pair'. Please provide correct syntax.");
+	// 				}
+	// 				$values = json_decode(trim($splitPair[2]));
+	// 				break;
+	// 			default:
+	// 				throw new Exception("Unsupported operator '$operator'");
+	// 		}
+
+	// 		$conditions[] = [
+	// 			'column' => $key,
+	// 			'op' => $operator,
+	// 			'values' => $values
+	// 		];
+	// 	}
+
+	// 	return $conditions;
+	// }
+
+	// static function parseResourceSegments(array $segments): array
+	// {
+	// 	$data = [];
+	// 	$currentSegmentIndex = 0;
+
+	// 	while ($currentSegmentIndex < count($segments)) {
+	// 		$segment = $segments[$currentSegmentIndex++];
+
+	// 		if ($segment === '') continue;
+
+	// 		if (strpos($segment, '[') !== false && strpos($segment, ']') !== false) {
+	// 			list($name, $conditionsStr) = explode('[', $segment, 2);
+
+	// 			$conditions = self::parseConditions($conditionsStr);
+	// 			$data[$name] = $conditions;
+	// 		} else {
+	// 			$data[] = $segment;
+	// 		}
+	// 	}
+
+	// 	return $data;
+
+	// }
+	// public static function parseUri($uri)
+	// {
+	// 	$parsedUrl = parse_url($uri);
+	// 	if (!isset($parsedUrl['scheme'])) {
+	// 		throw new Exception('Invalid URI format.');
+	// 	}
+
+	// 	$segments = explode('/', ltrim($parsedUrl['path'], '/'));
+	// 	$resourceData = self::parseResourceSegments($segments);
+
+	// 	$options = [];
+	// 	if (isset($parsedUrl['query'])) {
+	// 		parse_str($parsedUrl['query'], $options);
+	// 	}
+
+	// 	return [
+	// 		'scheme' => strtolower($parsedUrl['scheme']),
+	// 		'host' => isset($parsedUrl['host']) ? $parsedUrl['host'] : '',
+	// 		'port' => isset($parsedUrl['port']) ? intval($parsedUrl['port']) : null,
+	// 		'user' => isset($parsedUrl['user']) ? $parsedUrl['user'] : '',
+	// 		'pass' => isset($parsedUrl['pass']) ? $parsedUrl['pass'] : '',
+	// 		'resource' => $resourceData,
+	// 		'options' => $options
+	// 	];
+	// }
+
+	static function parseConditions($conditionsStr): array
+	{
+		$conditions = [];
+		$rawConditionPairs = explode(',', $conditionsStr);
+
+		foreach ($rawConditionPairs as $pair) {
+			$splitPair = explode(':', $pair);
+			$key = trim($splitPair[0]);
+
+			$operator = '=';
+			$value = trim($splitPair[1] ?? '');
+
+			if (strpos($value, '..') !== false) {
+				$operator = 'between';
+				$values = explode('..', $value);
+				$values = array_map('trim', $values);
+			} else {
+				$values = [$value];
+			}
+
+			$conditions[] = [
+				'column' => $key,
+				'op' => $operator,
+				'values' => $values
+			];
+		}
+
+		return $conditions;
+	}
+
+	static function parseRangeGroups($segment): array
+	{
+		preg_match_all('/\[(.*?)\]/', $segment, $matches);
+		$rangeGroups = [];
+
+		foreach ($matches[1] as $conditionsStr) {
+			$conditions = self::parseConditions($conditionsStr);
+			$rangeGroups[] = $conditions;
+		}
+
+		return $rangeGroups;
+	}
+
+	static function parseParameterGroups($segment): array
+	{
+		preg_match_all('/\((.*?)\)/', $segment, $matches);
+		$parameterGroups = [];
+
+		foreach ($matches[1] as $parametersStr) {
+			$parameters = array_map('trim', explode(',', $parametersStr));
+			$parameterGroups[] = $parameters;
+		}
+
+		return $parameterGroups;
+	}
+
+	static function parseResourceSegments(array $segments): array
+	{
+		$data = [];
+		$currentSegmentIndex = 0;
+
+		while ($currentSegmentIndex < count($segments)) {
+			$segment = $segments[$currentSegmentIndex++];
+
+			if ($segment === '') continue;
+
+			$rangeGroups = self::parseRangeGroups($segment);
+			$parameterGroups = self::parseParameterGroups($segment);
+
+			$segmentData = [
+				'segment' => $segment,
+				'rangeGroups' => $rangeGroups,
+				'parameterGroups' => $parameterGroups
+			];
+
+			$data[] = $segmentData;
+		}
+
+		return $data;
+	}
+
+	public static function parseUri($uri): array
+	{
+		$parsedUrl = parse_url($uri);
+
+		if (!isset($parsedUrl['scheme'])) {
+			throw new Exception('Invalid URI format.');
+		}
+
+		$segments = explode('/', ltrim($parsedUrl['path'], '/'));
+		$resourceData = self::parseResourceSegments($segments);
+
+		$options = [];
+		if (isset($parsedUrl['query'])) {
+			parse_str($parsedUrl['query'], $options);
+		}
+
+		return [
+			'scheme' => strtolower($parsedUrl['scheme']),
+			'host' => isset($parsedUrl['host']) ? $parsedUrl['host'] : '',
+			'port' => isset($parsedUrl['port']) ? intval($parsedUrl['port']) : null,
+			'user' => isset($parsedUrl['user']) ? $parsedUrl['user'] : '',
+			'pass' => isset($parsedUrl['pass']) ? $parsedUrl['pass'] : '',
+			'resource' => $resourceData,
+			'options' => $options
+		];
 	}
 }

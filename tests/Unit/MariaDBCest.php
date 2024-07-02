@@ -8,6 +8,7 @@ use Approach\deploy;
 use Approach\nullstate;
 use Approach\path;
 use Approach\Resource;
+use Approach\Resource\Resource as ResourceResource;
 use Approach\Scope;
 use Approach\Service;
 use Tests\Support\UnitTester;
@@ -108,7 +109,7 @@ class MariaDBCest
         // Check if $state is a MySQLi error number or a nullstate enum instance.
         $I->assertTrue(
             $state instanceof nullstate ||
-            is_int($state)
+                is_int($state)
         );
 
         // If $state was a MySQLi error number, then output the error from the MySQLi connection at connector->connection
@@ -143,5 +144,13 @@ class MariaDBCest
         $this->server->discover();
 
         // Check if the server has a php file at Scope::GetPath( path::project ) /Resource/
+    }
+
+    public function checkResrouceParse(UnitTester $I)
+    {
+        $url = "MariaDB://db.host/myDatabase/myTable[price: 0..250, price: 500..1000, status: active, updated: 12-31-2022][id, name].foo(id, name, 50)";
+        $r = ResourceResource::parseUri($url);
+        var_export($r);
+        // $I->assertEquals($r['scheme'], "MariaDB");
     }
 }
