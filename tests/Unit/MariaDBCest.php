@@ -146,11 +146,4 @@ class MariaDBCest
         // Check if the server has a php file at Scope::GetPath( path::project ) /Resource/
     }
 
-    public function checkResrouceParse(UnitTester $I)
-    {
-        $url = "MariaDB://db.host/myDatabase/myTable[price: 0..250, price: 500..1000, status: active, updated: 12-31-2022][id, name].foo(id, name, 50)";
-        $r = ResourceResource::parseUri($url);
-        var_export($r);
-        // $I->assertEquals($r['scheme'], "MariaDB");
-    }
 }

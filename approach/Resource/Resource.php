@@ -865,213 +865,124 @@ trait user_trait
 		});
 	}
 
-	// static function parseConditions($conditionsStr): array
-	// {
-	// 	$conditions = [];
-	// 	$rawConditionPairs = explode(',', $conditionsStr);
-
-	// 	foreach ($rawConditionPairs as $pair) {
-	// 		$splitPair = explode(':', $pair);
-
-	// 		$key = trim($splitPair[0]);
-	// 		$operator = match (count($splitPair)) {
-	// 			1 => '=',
-	// 			2 => trim($splitPair[1]),
-	// 			default => ''
-	// 		};
-
-	// 		switch ($operator) {
-	// 			case '=':
-	// 			case '<>':
-	// 			case '!=':
-	// 			case '<':
-	// 			case '>':
-	// 			case '<=':
-	// 			case '>=':
-	// 			case 'like':
-	// 			case 'in':
-	// 				$values = [trim($splitPair[1])];
-	// 				break;
-	// 			case 'between':
-	// 				if (count($splitPair) != 3 || !is_numeric($splitPair[2])) {
-	// 					throw new Exception("Invalid condition '$pair'. Please provide correct syntax.");
-	// 				}
-	// 				$values = [intval($splitPair[1]), intval($splitPair[2])];
-	// 				break;
-	// 			case 'jsoncontains':
-	// 				if (count($splitPair) < 3) {
-	// 					throw new Exception("Invalid condition '$pair'. Please provide correct syntax.");
-	// 				}
-	// 				$values = json_decode(trim($splitPair[2]));
-	// 				break;
-	// 			default:
-	// 				throw new Exception("Unsupported operator '$operator'");
-	// 		}
-
-	// 		$conditions[] = [
-	// 			'column' => $key,
-	// 			'op' => $operator,
-	// 			'values' => $values
-	// 		];
-	// 	}
-
-	// 	return $conditions;
-	// }
-
-	// static function parseResourceSegments(array $segments): array
-	// {
-	// 	$data = [];
-	// 	$currentSegmentIndex = 0;
-
-	// 	while ($currentSegmentIndex < count($segments)) {
-	// 		$segment = $segments[$currentSegmentIndex++];
-
-	// 		if ($segment === '') continue;
-
-	// 		if (strpos($segment, '[') !== false && strpos($segment, ']') !== false) {
-	// 			list($name, $conditionsStr) = explode('[', $segment, 2);
-
-	// 			$conditions = self::parseConditions($conditionsStr);
-	// 			$data[$name] = $conditions;
-	// 		} else {
-	// 			$data[] = $segment;
-	// 		}
-	// 	}
-
-	// 	return $data;
-
-	// }
-	// public static function parseUri($uri)
-	// {
-	// 	$parsedUrl = parse_url($uri);
-	// 	if (!isset($parsedUrl['scheme'])) {
-	// 		throw new Exception('Invalid URI format.');
-	// 	}
-
-	// 	$segments = explode('/', ltrim($parsedUrl['path'], '/'));
-	// 	$resourceData = self::parseResourceSegments($segments);
-
-	// 	$options = [];
-	// 	if (isset($parsedUrl['query'])) {
-	// 		parse_str($parsedUrl['query'], $options);
-	// 	}
-
-	// 	return [
-	// 		'scheme' => strtolower($parsedUrl['scheme']),
-	// 		'host' => isset($parsedUrl['host']) ? $parsedUrl['host'] : '',
-	// 		'port' => isset($parsedUrl['port']) ? intval($parsedUrl['port']) : null,
-	// 		'user' => isset($parsedUrl['user']) ? $parsedUrl['user'] : '',
-	// 		'pass' => isset($parsedUrl['pass']) ? $parsedUrl['pass'] : '',
-	// 		'resource' => $resourceData,
-	// 		'options' => $options
-	// 	];
-	// }
-
-	static function parseConditions($conditionsStr): array
+	public static function parseRange($range): array
 	{
-		$conditions = [];
-		$rawConditionPairs = explode(',', $conditionsStr);
+		$range = trim($range);
+		$range = explode(' ', $range);
 
-		foreach ($rawConditionPairs as $pair) {
-			$splitPair = explode(':', $pair);
-			$key = trim($splitPair[0]);
-
-			$operator = '=';
-			$value = trim($splitPair[1] ?? '');
-
-			if (strpos($value, '..') !== false) {
-				$operator = 'between';
-				$values = explode('..', $value);
-				$values = array_map('trim', $values);
-			} else {
-				$values = [$value];
+		if (count($range) === 1) {
+			return [$range[0]];
+		} elseif (count($range) === 2) {
+			if ($range[0] === 'lt') {
+				return ['lt' => $range[1]];
+			} elseif ($range[0] === 'gt') {
+				return ['gt' => $range[1]];
+			} elseif ($range[0] === 'eq') {
+				return ['eq' => $range[1]];
+			} elseif ($range[0] === 'ne') {
+				return ['ne' => $range[1]];
+			} elseif ($range[0] === 'le') {
+				return ['le' => $range[1]];
+			} elseif ($range[0] === 'ge') {
+				return ['ge' => $range[1]];
 			}
-
-			$conditions[] = [
-				'column' => $key,
-				'op' => $operator,
-				'values' => $values
-			];
+		} elseif (count($range) === 3) {
+			if ($range[1] === '..') {
+				return [(int)$range[0], (int)$range[2]];
+			}
 		}
-
-		return $conditions;
 	}
 
-	static function parseRangeGroups($segment): array
+	public static function isRange($range): bool
 	{
-		preg_match_all('/\[(.*?)\]/', $segment, $matches);
-		$rangeGroups = [];
+		$operators = array('..', 'gt', 'le', 'etc');
 
-		foreach ($matches[1] as $conditionsStr) {
-			$conditions = self::parseConditions($conditionsStr);
-			$rangeGroups[] = $conditions;
+		foreach ($operators as $operator) {
+			if (strpos($range, $operator) !== false) {
+				return true;
+			}
 		}
 
-		return $rangeGroups;
+		return false;
 	}
 
-	static function parseParameterGroups($segment): array
+	public static function parsePathContent($content): array
 	{
-		preg_match_all('/\((.*?)\)/', $segment, $matches);
-		$parameterGroups = [];
+		$parts = explode(',', $content);
+		$result = [];
 
-		foreach ($matches[1] as $parametersStr) {
-			$parameters = array_map('trim', explode(',', $parametersStr));
-			$parameterGroups[] = $parameters;
+		foreach ($parts as $part) {
+			$part = trim($part);
+			$part = explode(':', $part);
+
+			if (count($part) === 1) {
+				$result[$part[0]] = null;
+			} elseif (count($part) === 2) {
+				if (self::isRange($part[1])) {
+					$result[$part[0]] = self::parseRange($part[1]);
+				} else {
+					$result[$part[0]] = $part[1];
+				}
+			} else {
+				return [];
+			}
 		}
 
-		return $parameterGroups;
+		return $result;
 	}
 
-	static function parseResourceSegments(array $segments): array
+	public static function parsePath($path): array
 	{
-		$data = [];
-		$currentSegmentIndex = 0;
+		$brackets = [];
+		$brackets = preg_match_all('/\[(.*?)\]/', $path, $matches);
+		$brackets = $matches[1];
 
-		while ($currentSegmentIndex < count($segments)) {
-			$segment = $segments[$currentSegmentIndex++];
-
-			if ($segment === '') continue;
-
-			$rangeGroups = self::parseRangeGroups($segment);
-			$parameterGroups = self::parseParameterGroups($segment);
-
-			$segmentData = [
-				'segment' => $segment,
-				'rangeGroups' => $rangeGroups,
-				'parameterGroups' => $parameterGroups
-			];
-
-			$data[] = $segmentData;
+		if (!$brackets) {
+			return [$path];
+		} else {
+			foreach ($brackets as $key => $bracket) {
+				$parsed = self::parsePathContent($bracket);
+				if ($parsed) {
+					$brackets[$key] = $parsed;
+				}
+			}
 		}
 
-		return $data;
+		return $brackets;
 	}
 
-	public static function parseUri($uri): array
+	/**
+	 * Parse a URI into its components
+	 * 
+	 * @param string $url The URL to parse
+	 * @return array An array of the components of the URL
+	 * @access public
+	 * @static
+	 */
+	public static function parseUri($url): array
 	{
-		$parsedUrl = parse_url($uri);
+		$primary = parse_url($url);
 
-		if (!isset($parsedUrl['scheme'])) {
-			throw new Exception('Invalid URI format.');
+		// the result array
+		$res = [];
+
+		// divide the path into sub paths
+		$paths = explode('/', $primary['path']);
+		$paths = array_filter($paths, function ($path) {
+			return $path !== '';
+		});
+
+		$res['scheme'] = $primary['scheme'] ?? '';
+		$res['host'] = $primary['host'] ?? '';
+		$res['port'] = $primary['port'] ?? '';
+		// $res['user'] = $primary['user'] ?? '';
+		// $res['pass'] = $primary['pass'] ?? '';
+		$res['paths'] = [];
+
+		foreach ($paths as $path) {
+			$res['paths'][] = self::parsePath($path);
 		}
 
-		$segments = explode('/', ltrim($parsedUrl['path'], '/'));
-		$resourceData = self::parseResourceSegments($segments);
-
-		$options = [];
-		if (isset($parsedUrl['query'])) {
-			parse_str($parsedUrl['query'], $options);
-		}
-
-		return [
-			'scheme' => strtolower($parsedUrl['scheme']),
-			'host' => isset($parsedUrl['host']) ? $parsedUrl['host'] : '',
-			'port' => isset($parsedUrl['port']) ? intval($parsedUrl['port']) : null,
-			'user' => isset($parsedUrl['user']) ? $parsedUrl['user'] : '',
-			'pass' => isset($parsedUrl['pass']) ? $parsedUrl['pass'] : '',
-			'resource' => $resourceData,
-			'options' => $options
-		];
+		return $res;
 	}
 }
