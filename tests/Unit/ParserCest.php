@@ -1,6 +1,5 @@
 <?php
 
-
 namespace Tests\Unit;
 
 use Approach\Resource\Resource;
