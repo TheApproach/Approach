@@ -20,8 +20,6 @@ use Approach\Resource\Aspect\aspects;
 use Approach\path;
 use Approach\Resource\Aspect\discover;
 use Approach\Resource\Aspect\Aspect;
-use Approach\Resource\Aspect\location;
-use Approach\Resource\Aspect\operation;
 use Approach\Resource\Aspect\field;
 use Approach\Scope;
 use Approach\Resource\FilterParser;
@@ -29,17 +27,10 @@ use Approach\Resource\FilterParser;
 use Approach\Render\Stream;
 use Approach\Render\Node as RenderNode;
 use Approach\Render\Container;
-use Approach\Service\connectable;
 use Approach\Service\Service;
-use Approach\Service\flow;
 use Approach\Service\format;
 use Approach\Service\target;
-use Exception;
 use Stringable;
-
-abstract class accessor
-{
-}
 
 const locate = 0;
 const pick = 1;
@@ -271,13 +262,12 @@ class Resource extends RenderNode implements Stream
 				}
 
 				// Second, get through any white space
-				for (
-					;
+				for (;
 					$i < $part_max_length &&
-					match ($part[$i]) {
-						' ', '\r', '\n' => true,
-						default => false,
-					};
+						match ($part[$i]) {
+							' ', '\r', '\n' => true,
+							default => false,
+						};
 					$i++
 				);
 
@@ -311,11 +301,10 @@ class Resource extends RenderNode implements Stream
 				}
 
 				// Next, try to match a number
-				for (
-					;
+				for (;
 					$i < $part_max_length &&
-					$part[$i] >= '0' &&
-					$part[$i] <= '9';
+						$part[$i] >= '0' &&
+						$part[$i] <= '9';
 					$i++
 				);
 
@@ -365,11 +354,10 @@ class Resource extends RenderNode implements Stream
 				) {
 					$i += 2;
 
-					for (
-						;
+					for (;
 						$i < $part_max_length &&
-						$part[$i] >= '0' &&
-						$part[$i] <= '9';
+							$part[$i] >= '0' &&
+							$part[$i] <= '9';
 						$i++
 					);
 
@@ -382,15 +370,14 @@ class Resource extends RenderNode implements Stream
 				}
 
 				// If the number doesn't end with a ], assume it's part of an identifier?
-				for (
-					;
+				for (;
 					$i < $part_max_length &&
-					(($part[$i] >= '0' && $part[$i] <= '9') ||
-						($part[$i] >= 'a' && $part[$i] <= 'z') ||
-						($part[$i] >= 'A' && $part[$i] <= 'Z') ||
-						$part[$i] === '_' ||
-						$part[$i] === '-' ||
-						$part[$i] === '.');
+						(($part[$i] >= '0' && $part[$i] <= '9') ||
+							($part[$i] >= 'a' && $part[$i] <= 'z') ||
+							($part[$i] >= 'A' && $part[$i] <= 'Z') ||
+							$part[$i] === '_' ||
+							$part[$i] === '-' ||
+							$part[$i] === '.');
 					$i++
 				);
 
@@ -966,15 +953,15 @@ trait user_trait
 
 	public static $Operations = [
 		self::ASSIGN => ':',
-		self::EQUAL_TO => 'eq',
-		self::NOT_EQUAL_TO => 'ne',
-		self::LESS_THAN => 'lt',
-		self::GREATER_THAN => 'gt',
+		self::EQUAL_TO => ' eq ',
+		self::NOT_EQUAL_TO => ' ne ',
+		self::LESS_THAN => ' lt ',
+		self::GREATER_THAN => ' gt ',
 		self::_AND_ => ' AND ',
 		self::_OR_ => ' OR ',
 		self::_HAS_ => ' HAS ',
-		self::LESS_THAN_EQUAL_TO => 'le',
-		self::GREATER_THAN_EQUAL_TO => 'ge',
+		self::LESS_THAN_EQUAL_TO => ' le ',
+		self::GREATER_THAN_EQUAL_TO => ' ge ',
 		self::RANGE => '..',
 		self::OPEN_DIRECTIVE => '{',
 		self::CLOSE_DIRECTIVE => '}',
@@ -990,78 +977,10 @@ trait user_trait
 		self::DELIMITER => ',',
 	];
 
-	public static function parseRange($brackets): array
+	static function getDelimiterPositionEfficient($haystack)
 	{
-		$brackets = trim($brackets);
-		$brackets = explode(' ', $brackets);
-		$wanted = [
-			self::LESS_THAN,
-			self::GREATER_THAN,
-			self::EQUAL_TO,
-			self::NOT_EQUAL_TO,
-			self::LESS_THAN_EQUAL_TO,
-			self::GREATER_THAN_EQUAL_TO,
-		];
-
-		if (count($brackets) === 1) {
-			return [$brackets[0]];
-		} elseif (count($brackets) === 2) {
-			if (in_array($brackets[0], $wanted)) {
-				return [(int) $brackets[1]];
-			}
-		} elseif (count($brackets) === 3) {
-			if ($brackets[1] === self::$Operations[self::RANGE]) {
-				return [(int) $brackets[0], (int) $brackets[2]];
-			}
-		}
-
-		return [];
-	}
-
-	// Change the isRange function
-	public static function isRange($brackets): bool
-	{
-		$operators = ['..', 'gt', 'le', 'eq', 'ne', 'lt', 'ge'];
-
-		foreach ($operators as $operator) {
-			if (strpos($brackets, $operator) !== false) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	public static function parsePathContent($content): array
-	{
-		$parts = explode(',', $content);
-		$result = [];
-
-		foreach ($parts as $part) {
-			$part = trim($part);
-			$part = explode(':', $part);
-
-			if (count($part) === 1) {
-				$result[$part[0]] = null;
-			} elseif (count($part) === 2) {
-				if (self::isRange($part[1])) {
-					$result[$part[0]] = self::parseRange($part[1]);
-				} else {
-					$result[$part[0]] = $part[1];
-				}
-			} else {
-				return [];
-			}
-		}
-
-		return $result;
-	}
-
-	static function find_first_delim($path)
-	{
-		// find first delimiter position in path
-		$first_delim = false;
-		$uri_delims = [
+		$length = strlen($haystack);
+		$delimiters = [
 			':',
 			'/',
 			'?',
@@ -1081,62 +1000,165 @@ trait user_trait
 			';',
 			'=',
 		];
-		foreach ($uri_delims as $delim) {
-			$first_delim = strpos($path, $delim);
-			if ($first_delim !== false) {
-				break;
+		$lowestIndex = INF;
+
+		foreach ($delimiters as $delimiter) {
+			$currentCharPositions = [];
+			$charLength = strlen($delimiter);
+
+			for ($i = 0; $i <= $length - $charLength; $i++) {
+				if (substr($haystack, $i, $charLength) === $delimiter) {
+					$currentCharPositions[] = $i;
+				}
+			}
+
+			if (!empty($currentCharPositions) && min($currentCharPositions) < $lowestIndex) {
+				$lowestIndex = min($currentCharPositions);
 			}
 		}
-		return $first_delim;
+
+		return $lowestIndex === INF ? -1 : $lowestIndex;
 	}
 
-	static function parsePath($path): array
+	static function extractRanges($string): array | bool
 	{
-		$brackets = [];
-		preg_match_all('/\[(.*?)\]/', $path, $matches); // TODO: kill this regex with str_pos
+		$result = array();
+		$start = 0;
+
+		while (($openPos = strpos($string, self::$Operations[self::OPEN_INDEX], $start)) !== false) {
+			$closePos = strpos($string, self::$Operations[self::CLOSE_INDEX], $openPos);
+
+			if ($closePos === false) {
+				return false;
+			}
+
+			$content = substr($string, $openPos + 1, $closePos - $openPos - 1);
+			$result[] = $content;
+
+			$start = $closePos + 1;
+		}
+
+		return $result;
+	}
+
+	static function parseRange($range): array | bool
+	{
+		$range = trim($range);
+
+		if (empty($range)) {
+			return false;
+		}
+
+		$parts = self::splitString($range, ',');
+		$result = [];
+
+		foreach ($parts as $part) {
+			$part = trim($part);
+			$parsedPart = self::parsePart($part);
+			$result[] = $parsedPart;
+		}
+
+		return $result;
+	}
+
+	private static function parsePart($part)
+	{
+		// Check for AND, OR, HAS
+		$logicalOps = [self::$Operations[self::_AND_], self::$Operations[self::_OR_], self::$Operations[self::_HAS_]];
+		foreach ($logicalOps as $op) {
+			if (($pos = strpos($part, $op)) !== false) {
+				$left = trim(substr($part, 0, $pos));
+				$right = trim(substr($part, $pos + strlen($op)));
+				if (self::isRange($left)){
+					$left = self::parseRange($left);
+				}
+				if (self::isRange($right)){
+					$right = self::parseRange($right);
+				}
+
+				return [$left, $op, $right];
+			}
+		}
+
+		foreach (self::$Operations as $_ => $opValue) {
+			if (($pos = strpos($part, $opValue)) !== false) {
+				$field = trim(substr($part, 0, $pos));
+				$value = trim(substr($part, $pos + strlen($opValue)));
+				if (!empty($field) && $value !== '') {
+					if(self::isRange($value)){
+						$value = substr($value, 1, -1);
+						$value = self::parseRange($value);
+					}
+					return [$field, $opValue, $value];
+				}
+			}
+		}
+
+		return $part;
+	}
+
+	private static function splitString($string, $delimiter)
+	{
+		$result = [];
+		$start = 0;
+		$length = strlen($string);
+
+		while (($pos = strpos($string, $delimiter, $start)) !== false) {
+			$result[] = substr($string, $start, $pos - $start);
+			$start = $pos + strlen($delimiter);
+		}
+
+		if ($start < $length) {
+			$result[] = substr($string, $start);
+		}
+
+		return $result;
+	}
+
+	public static function parsePath(string $path): array | string
+	{
+		$name = "";
+		$first_bracket = strpos($path, self::$Operations[self::OPEN_INDEX]);
+
+		$name = substr($path, 0, $first_bracket);
+		$ranges = self::extractRanges($path);
+		if ($first_bracket === false || $ranges === false) {
+			$name = $path;
+			return $name;
+		}
+
 		$res = [];
-		$res['location'] = $path;
-		$res['range'] = [];
-		$res['statement'] = [];
+		$res['name'] = $name;
+		$res['ranges'] = [];
 
-		$brackets = $matches[1];
-
-		foreach ($brackets as $key => $bracket) {
-			$parsed = self::parsePathContent($bracket);
-			$res['range'][$key] = $parsed;
+		foreach ($ranges as $range) {
+			$res['ranges'][] = self::parseRange($range);
 		}
 
 		return $res;
 	}
 
-	/**
-	 * Detect the presence of any number of xyz[ anything ][ anything ][ anything ] . . .
-	 * Where square brackets encapsulate a range selection, index, key, or directive
-	 *
-	 * @param string $path_component The path component to parse
-	 * @return array An array of the detected range operators
-	 */
-	public static function detect_range_operators(string $path_component): array
-	{
-		$found = [];
+	static function isRange($path): bool{
+		// check if any one operators is present
+		$operators = [
+			self::$Operations[self::EQUAL_TO],
+			self::$Operations[self::NOT_EQUAL_TO],
+			self::$Operations[self::LESS_THAN],
+			self::$Operations[self::GREATER_THAN],
+			self::$Operations[self::LESS_THAN_EQUAL_TO],
+			self::$Operations[self::GREATER_THAN_EQUAL_TO],
+			self::$Operations[self::_AND_],
+			self::$Operations[self::_OR_],
+			self::$Operations[self::_HAS_],
+		];
 
-		$open = 0;
-		$close = 0;
-		$cursor = 0;
-
-		while ($cursor < strlen($path_component)) {
-			$open = strpos($path_component, '[', $cursor);
-			$close = strpos($path_component, ']', $cursor);
-
-			if ($open === false || $close === false) {
-				break;
+		foreach ($operators as $operator) {
+			if (strpos($path, $operator) !== false) {
+				return true;
 			}
-
-			$found[] = substr($path_component, $open, $close - $open + 1);
-			$cursor = $close + 1;
 		}
 
-		return $found;
+		return false;
 	}
 
 	/**
@@ -1149,29 +1171,47 @@ trait user_trait
 	 */
 	public static function parseUri(string $url): array
 	{
-//		$primary = parse_url($url);
-//
-//		// the result array
-//		$res = [];
-//
-//		// divide the path into sub paths
-//		$paths = explode('/', $primary['path']);
-//		$paths = array_filter($paths, function ($path) {
-//			return $path !== '';
-//		});
-//
-//		$res['scheme'] = $primary['scheme'] ?? '';
-//		$res['host'] = $primary['host'] ?? '';
-//		$res['port'] = $primary['port'] ?? '';
-//		$res['paths'] = [];
-//
-//		foreach ($paths as $path) {
-//			$res['paths'][] = self::parsePath($path);
-//		}
-//
-//		return $res;
-        $filter = new FilterParser($url);
+		$primary = parse_url($url);
+		$res = [];
 
-        return $filter->parsed;
+		$pathCombined = $primary['path'];
+		// only till a delimiter
+		$first_delim = self::getDelimiterPositionEfficient($pathCombined);
+		$first_delim = false;
+		$pathCombined = $first_delim === false ? $pathCombined : substr($pathCombined, 0, $first_delim);
+		
+		// check if there is a function call in the end
+		// like [].hello()
+		// so, detect the first . after the last ]
+		$last_bracket = strrpos($pathCombined, self::$Operations[self::CLOSE_INDEX]);
+		$first_dot = strpos($pathCombined, '.', $last_bracket);
+		if ($first_dot !== false) {
+			$res['function'] = substr($pathCombined, $first_dot + 1);
+		}
+
+		$paths = explode('/', $pathCombined);
+		$paths = array_filter($paths, function ($path) {
+			return $path !== '';
+		});
+		$res['scheme'] = $primary['scheme'] ?? '';
+		$res['host'] = $primary['host'] ?? '';
+		$res['port'] = $primary['port'] ?? '';
+		$res['queries'] = [];
+
+		if (isset($primary['query'])) {
+			$queries = explode('&', $primary['query']);
+			foreach ($queries as $query) {
+				$parts = explode('=', $query);
+				$res['queries'][$parts[0]] = $parts[1];
+			}
+		}
+
+		$res['paths'] = [];
+
+		foreach ($paths as $path) {
+			$res['paths'][] = self::parsePath($path);
+		}
+
+		return $res;
 	}
 }
