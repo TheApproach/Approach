@@ -71,14 +71,14 @@ abstract class FilterOperators
     const RANGE = 22;
     // etc.
 };
-// All operations are as such:   NameExpression Operator ValueExpression
-// Comparison List is a list of [ [NameExpression,Operator,ValueExpression], ...]
-// Value Expression May Represent Multiple Or Single Values, only some operators to allow multiple values
+// All operations are as such: NameExpression Operator ValueExpression
+// Comparison List is a list of [ [NameExpression, Operator,ValueExpression], ...]
+// Value Expression May Represent Multiple Or Single Values, only some operators allow multiple values
 
 //listing(${1.75}hasPool, ~{0.50}price <= 1000, garage HAS (door,lamp) )
 
 // {}  directive
-// () parsed and resolved inner-to-outer, except for outermost set which is interpretted as the comparison list
+// () parsed and resolved inner-to-outer, except for an outermost set which is interpretted as the comparison list
 // [] indexing
 
 class FilterParser extends FilterOperators
@@ -97,8 +97,8 @@ class FilterParser extends FilterOperators
         self::RANGE => '..',
         self::OPEN_DIRECTIVE => '{',
         self::CLOSE_DIRECTIVE => '}',
-        self::OPEN_GROUP => '(',
-        self::CLOSE_GROUP => ')',
+        self::OPEN_GROUP => '[',
+        self::CLOSE_GROUP => ']',
         self::OPEN_INDEX => '[',
         self::CLOSE_INDEX => ']',
         self::OPEN_WEIGHT => '{',
@@ -109,9 +109,9 @@ class FilterParser extends FilterOperators
         self::DELIMITER => ','
     ];
 
-    public $parsed=[];
-    public $scopes=[];
-    public $scope_cursor=0;
+    public array $parsed=[];
+    public array $scopes=[];
+    public int $scope_cursor=0;
 	public $dataset_type=NULL;
 
     public function __construct($uri)
@@ -155,8 +155,8 @@ class FilterParser extends FilterOperators
 	}
 
 	// returns $String dataset type
-	public function detectDatasetClass($current_scope, &$cursor)
-	{
+	public function detectDatasetClass($current_scope, &$cursor): string
+    {
 		$dataset_type = '';
 		$control_chars['dataset'] = [
 			self::$Operations[self::OPEN_GROUP],
@@ -173,16 +173,16 @@ class FilterParser extends FilterOperators
 			else break;
 		}
 
-		if(!class_exists($dataset_type) && $dataset_type != '')
-		{
-			throw new Exception('Class "'.$dataset_type.'" does not exist.');
-		}
+		// if(!class_exists($dataset_type) && $dataset_type != '')
+		// {
+		// 	throw new Exception('Class "'.$dataset_type.'" does not exist.');
+		// }
 
         return $dataset_type;
 	}
 
-	private function detectComparisonList($current_scope, &$cursor)
-	{
+	private function detectComparisonList($current_scope, &$cursor): array
+    {
 		// (${1.75}hasPool, ~{0.50}price=1000..2000, garage HAS (door,lamp) )
 
 		$comparison_list=[];
@@ -204,6 +204,8 @@ class FilterParser extends FilterOperators
 		$value_text = '';
 		$value_expression=[];
 		$current_operator=NULL;
+
+        // MariaDB://db.host/myDatabase/myTable
 
 		$comparison_operators=[
 			self::$Operations[self::EQUAL_TO],
@@ -259,6 +261,7 @@ class FilterParser extends FilterOperators
 				($cursor+3 < $L ? $current_scope[$cursor+3] : ''),
 				($cursor+4 < $L ? $current_scope[$cursor+4] : ''),
 			];
+            // This matches the length of the longest operator Ex: ' HAS '
 			$multi_cursor = [
 				$next_chars[0],
 				$next_chars[0].$next_chars[1],
@@ -318,7 +321,7 @@ class FilterParser extends FilterOperators
 
 		if($open_group_count != $close_group_count)
 		{
-			throw new Exception('Mismatched Paranthesis ()s');
+			throw new Exception('Mismatched Parenthesis ()s');
 		}
 
 		return $comparison_list;
