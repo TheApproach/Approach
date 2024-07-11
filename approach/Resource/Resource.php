@@ -1076,13 +1076,11 @@ trait user_trait
                 $left = trim(substr($part, 0, $pos));
                 $right = trim(substr($part, $pos + strlen($op)));
                 if (self::isRange($left)) {
-                    $left = self::parseRange($left);
-                    // make to aspect
+//                    $left = self::parseRange($left);
                     $this->sift($left);
                 }
                 if (self::isRange($right)) {
-                    $right = self::parseRange($right);
-                    // make to aspect
+//                    $right = self::parseRange($right);
                     $this->sift($right);
                 }
 
@@ -1184,9 +1182,9 @@ trait user_trait
      * @access public
      * @static
      */
-    public function parseUri(): array
+    public function parseUri($url): array
     {
-        $primary = parse_url($this->url);
+        $primary = parse_url($url);
         $res = [];
 
         $pathCombined = $primary['path'];
