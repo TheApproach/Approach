@@ -2,47 +2,35 @@
 
 
 /*************************************************************************
-
-APPROACH
-Organic, human driven software.
-
-
-COPYRIGHT NOTICE
-__________________
-
-(C) Copyright 2020 - Garet Claborn
-All Rights Reserved.
-
-Notice: All information contained herein is, and remains
-the property of Approach Foundation LLC and the original author, Garet Claborn,
-herein referred to as "original author".
-
-The intellectual and technical concepts contained herein are
-proprietary to Approach Foundation LLC and the original author
-and may be covered by U.S. and Foreign Patents, patents in process,
-and are protected by trade secret or copyright law.
-
-/*************************************************************************
-*
-*
-* Approach by Garet Claborn is licensed under a
-* Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
-*
-* Based on a work at https://github.com/stealthpaladin .
-*
-* Permissions beyond the scope of this license may be available at
-* garet.claborn@gmail.com
-*
-*
-*
-*************************************************************************/
+ *
+ *
+ * Approach by Garet Claborn is licensed under a
+ * Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
+ *
+ * Based on a work at https://github.com/stealthpaladin .
+ *
+ * Permissions beyond the scope of this license may be available at
+ * garet.claborn@gmail.com
+ *
+ *
+ *
+ *************************************************************************/
 
 namespace Approach\Resource;
 
-use Exception;
-
-abstract class FilterOperators
+class FilterParser
 {
+    public mixed $url;
+    public array $properties = [];
+    public array $comparisons = [];
+    public int $p_count = 0;
+    public int $c_count = 0;
+
+    public function __construct(mixed $url)
+    {
+        $this->url = $url;
+    }
+
     const ASSIGN = 0;
     const EQUAL_TO = 1;
     const NOT_EQUAL_TO = 2;
@@ -69,36 +57,23 @@ abstract class FilterOperators
     const WANT_PREFIX = 20;
     const DELIMITER = 21;
     const RANGE = 22;
-    // etc.
-};
-// All operations are as such: NameExpression Operator ValueExpression
-// Comparison List is a list of [ [NameExpression, Operator,ValueExpression], ...]
-// Value Expression May Represent Multiple Or Single Values, only some operators allow multiple values
 
-//listing(${1.75}hasPool, ~{0.50}price <= 1000, garage HAS (door,lamp) )
-
-// {}  directive
-// () parsed and resolved inner-to-outer, except for an outermost set which is interpretted as the comparison list
-// [] indexing
-
-class FilterParser extends FilterOperators
-{
-    public static $Operations = [
+    public static array $Operations = [
         self::ASSIGN => ':',
-        self::EQUAL_TO => '=',
-        self::NOT_EQUAL_TO => '!=',
-        self::LESS_THAN => '<',
-        self::GREATER_THAN => '>',
+        self::EQUAL_TO => ' eq ',
+        self::NOT_EQUAL_TO => ' ne ',
+        self::LESS_THAN => ' lt ',
+        self::GREATER_THAN => ' gt ',
         self::_AND_ => ' AND ',
         self::_OR_ => ' OR ',
         self::_HAS_ => ' HAS ',
-        self::LESS_THAN_EQUAL_TO => '<=',
-        self::GREATER_THAN_EQUAL_TO => '>=',
+        self::LESS_THAN_EQUAL_TO => ' le ',
+        self::GREATER_THAN_EQUAL_TO => ' ge ',
         self::RANGE => '..',
         self::OPEN_DIRECTIVE => '{',
         self::CLOSE_DIRECTIVE => '}',
-        self::OPEN_GROUP => '[',
-        self::CLOSE_GROUP => ']',
+        self::OPEN_GROUP => '(',
+        self::CLOSE_GROUP => ')',
         self::OPEN_INDEX => '[',
         self::CLOSE_INDEX => ']',
         self::OPEN_WEIGHT => '{',
@@ -106,287 +81,250 @@ class FilterParser extends FilterOperators
         self::NEED_PREFIX => '$',
         self::REJECT_PREFIX => '!',
         self::WANT_PREFIX => '~',
-        self::DELIMITER => ','
+        self::DELIMITER => ',',
     ];
 
-    public array $parsed=[];
-    public array $scopes=[];
-    public int $scope_cursor=0;
-	public $dataset_type=NULL;
-
-    public function __construct($uri)
+    function getDelimiterPositionEfficient($haystack)
     {
-		$this->scopes = explode('/', $uri);
-		// remove leading '/' empty element
-		if(empty($this->scopes[0]))
-			array_shift($this->scopes);
+        $length = strlen($haystack);
+        $delimiters = [
+            ':',
+            '/',
+            '?',
+            '#',
+            '[',
+            ']',
+            '@',
+            '!',
+            '$',
+            '&',
+            '\'',
+            '(',
+            ')',
+            '*',
+            '+',
+            ',',
+            ';',
+            '=',
+        ];
+        $lowestIndex = INF;
 
-		while ($this->scope_cursor < count($this->scopes))
-		{
-			try
-			{
-				$this->parsed[$this->scope_cursor] = $this->ResolveCurrentScope();
-				$this->scope_cursor++;
-			}
-			catch(Exception $e)
-			{
-				exit(PHP_EOL.$e->getMessage());
-			}
-		}
+        foreach ($delimiters as $delimiter) {
+            $currentCharPositions = [];
+            $charLength = strlen($delimiter);
+
+            for ($i = 0; $i <= $length - $charLength; $i++) {
+                if (substr($haystack, $i, $charLength) === $delimiter) {
+                    $currentCharPositions[] = $i;
+                }
+            }
+
+            if (!empty($currentCharPositions) && min($currentCharPositions) < $lowestIndex) {
+                $lowestIndex = min($currentCharPositions);
+            }
+        }
+
+        return $lowestIndex === INF ? -1 : $lowestIndex;
     }
 
-    public function ResolveCurrentScope()
+    function extractRanges($string): array|bool
     {
-		$current_scope = $this->scopes[ $this->scope_cursor ];
-		$cursor=0;
-		$comparison_list = [];
-		$query_modifier_list = [];
+        $result = array();
+        $start = 0;
 
-		$dataset_type = $this->detectDatasetClass($current_scope, $cursor);
-		if(empty($this->dataset_type))
-			$this->dataset_type = $dataset_type;
+        while (($openPos = strpos($string, self::$Operations[self::OPEN_INDEX], $start)) !== false) {
+            $closePos = strpos($string, self::$Operations[self::CLOSE_INDEX], $openPos);
 
-		if($cursor < strlen($current_scope) )
-			$comparison_list = $this->detectComparisonList($current_scope, $cursor);
-		if($cursor < strlen($current_scope) )
-			$query_modifier_list = $this->detectQueryModifierList($current_scope, $cursor);
-
-        return [ $dataset_type, $comparison_list, $query_modifier_list ];
-	}
-
-	// returns $String dataset type
-	public function detectDatasetClass($current_scope, &$cursor): string
-    {
-		$dataset_type = '';
-		$control_chars['dataset'] = [
-			self::$Operations[self::OPEN_GROUP],
-			self::$Operations[self::OPEN_DIRECTIVE],
-			self::$Operations[self::OPEN_INDEX]
-		];
-
-		for ($L=strlen($current_scope); $cursor<$L; $cursor++)
-		{
-			if( !in_array($current_scope[$cursor], $control_chars['dataset']) )
-			{
-				$dataset_type .= $current_scope[$cursor];
+            if ($closePos === false) {
+                return false;
             }
-			else break;
-		}
 
-		// if(!class_exists($dataset_type) && $dataset_type != '')
-		// {
-		// 	throw new Exception('Class "'.$dataset_type.'" does not exist.');
-		// }
+            $content = substr($string, $openPos + 1, $closePos - $openPos - 1);
+            $result[] = $content;
 
-        return $dataset_type;
-	}
+            $start = $closePos + 1;
+        }
 
-	private function detectComparisonList($current_scope, &$cursor): array
+        return $result;
+    }
+
+    function parseRange($range): array|bool
     {
-		// (${1.75}hasPool, ~{0.50}price=1000..2000, garage HAS (door,lamp) )
+        $range = trim($range);
 
-		$comparison_list=[];
-		// not an "("
-        if ($current_scope[$cursor] != self::$Operations[self::OPEN_GROUP]) {
-            return $comparison_list;
-		}
+        if (empty($range)) {
+            return false;
+        }
 
-		//Inside Comparison List ()s
-		$cursor++;
-		$open_group_count = 1;
-		$close_group_count = 0;
+        $parts = self::splitString($range);
+        $result = [];
 
-		$L=strlen($current_scope);
-		$found_operator = false;
-		$sync = false;
-		$field_text = '';
-		$value_expression=[];
-		$value_text = '';
-		$value_expression=[];
-		$current_operator=NULL;
+        foreach ($parts as $part) {
+            $part = trim($part);
+            $parsedPart = $this->parsePart($part);
+            $result[] = $parsedPart;
+        }
 
-        // MariaDB://db.host/myDatabase/myTable
+        return $result;
+    }
 
-		$comparison_operators=[
-			self::$Operations[self::EQUAL_TO],
-			self::$Operations[self::NOT_EQUAL_TO],
-			self::$Operations[self::LESS_THAN],
-			self::$Operations[self::GREATER_THAN],
-			self::$Operations[self::_AND_],
-			self::$Operations[self::_OR_],
-			self::$Operations[self::_HAS_],
-			self::$Operations[self::LESS_THAN_EQUAL_TO],
-			self::$Operations[self::GREATER_THAN_EQUAL_TO],
-			self::$Operations[self::RANGE]
-		];
-		/*
-			/type_to_filter_by(THIS PART IS BEING LOOPED){not this part}
-		*/
+    function parsePart($part): array
+    {
+        // Check for AND, OR, HAS
+        $logicalOps = [self::$Operations[self::_AND_], self::$Operations[self::_OR_], self::$Operations[self::_HAS_]];
+        foreach ($logicalOps as $op) {
+            if (($pos = strpos($part, $op)) !== false) {
+                $left = trim(substr($part, 0, $pos));
+                $right = trim(substr($part, $pos + strlen($op)));
+                if (self::isRange($left)) {
+                    $left = self::parseRange($left);
+                }
+                if (self::isRange($right)) {
+                    $right = self::parseRange($right);
+                }
 
-		//https://service.osc.com/filter/filter.php?json={%22context%22:{%22filter%22:%22/bridge_listings(${1.75}PoolPrivateYN=1,ListPrice=%20100..2000000){LIMIT:1000,SORT:DESC}%22}}
-		$field_expression='';
-		while( $cursor < $L )
-		{
-			$char = $current_scope[$cursor];
-
-			if( $char == self::$Operations[self::CLOSE_GROUP] )
-			{
-
-				$value_group = false;
-				$close_group_count++;
-				// If parser catches up to the first opening paranthesis group
-				if($close_group_count == $open_group_count)
-				{
-					$value_expression = $this->detectValueExpression($value_text);
-					$comparison_list[] = [$field_expression, $current_operator, $value_expression];
-					$cursor++;
-					break;
-				}
-			}
-			if( $char == self::$Operations[self::OPEN_GROUP] )
-			{
-				$open_group_count++;
-				$value_group = true;
-				if($close_group_count == $open_group_count)
-				{
-					$cursor++;
-					break;
-				}
-			}
-
-			$next_chars =[
-				$current_scope[$cursor],
-				($cursor+1 < $L ? $current_scope[$cursor+1] : ''),
-				($cursor+2 < $L ? $current_scope[$cursor+2] : ''),
-				($cursor+3 < $L ? $current_scope[$cursor+3] : ''),
-				($cursor+4 < $L ? $current_scope[$cursor+4] : ''),
-			];
-            // This matches the length of the longest operator Ex: ' HAS '
-			$multi_cursor = [
-				$next_chars[0],
-				$next_chars[0].$next_chars[1],
-				$next_chars[0].$next_chars[1].$next_chars[2],
-				$next_chars[0].$next_chars[1].$next_chars[2].$next_chars[3],
-				$next_chars[0].$next_chars[1].$next_chars[2].$next_chars[3].$next_chars[4]
-			];
-
-			$t=array_intersect($multi_cursor, $comparison_operators);
-			// FIELD SIDE EVALUATION UNTIL OPERATOR
-            if (empty($t) && !$found_operator) {
-				$field_text .= $current_scope[$cursor];
+                $this->comparisons[] = $this->c_count;
+                $this->c_count++;
+                return [$left, $op, $right];
             }
-			elseif(!$found_operator)
-			{
-				$found_operator = true;
-				$current_operator = array_shift($t);
+        }
 
-				$cursor+= strlen($current_operator);
-				$field_expression = $this->detectFieldExpression($field_text);
+        foreach (self::$Operations as $opValue) {
+            if (($pos = strpos($part, $opValue)) !== false) {
+                $field = trim(substr($part, 0, $pos));
+                $value = trim(substr($part, $pos + strlen($opValue)));
+                if (!empty($field) && $value !== '') {
+                    if (self::isRange($value)) {
+                        $value = substr($value, 1, -1);
+                        $value = self::parseRange($value);
+                    }
 
-				$sync = true;
-			}
+                    $this->comparisons[] = $this->c_count;
+                    $this->c_count++;
+                    return [$field, $opValue, $value];
+                }
+            }
+        }
 
-			$char = $current_scope[$cursor];
-			// VALUE SIDE EVALUATION
-			if($sync && $found_operator)
-			{
-				if(	($char != self::$Operations[self::CLOSE_GROUP] && $char != self::$Operations[self::DELIMITER])
-					||
-					($char == self::$Operations[self::DELIMITER] && (($open_group_count - $close_group_count) > 1))
-				)
-				{
-					switch($char)
-					{
-						case self::$Operations[self::OPEN_GROUP] : $open_group_count++; break;
-						default : $value_text .= $current_scope[$cursor]; break;
-					}
-				}
-				else
-				{
-					$value_expression = $this->detectValueExpression($value_text);
-					$comparison_list[] = [$field_expression, $current_operator, $value_expression];
+        $this->properties[] = $this->p_count;
+        $this->p_count++;
+        return [$part];
+    }
 
-					$found_operator = false;
-					$sync = false;
-					$field_text = '';
-					$value_expression=[];
-					$value_text = '';
-					$value_expression=[];
-					$current_operator=NULL;
-				}
-			}
+    private function splitString($string): array
+    {
+        $result = [];
+        $start = 0;
+        $length = strlen($string);
 
-			$cursor++;
-		}
+        while (($pos = strpos($string, ',', $start)) !== false) {
+            $result[] = substr($string, $start, $pos - $start);
+            $start = $pos + strlen(',');
+        }
 
-		if($open_group_count != $close_group_count)
-		{
-			throw new Exception('Mismatched Parenthesis ()s');
-		}
+        if ($start < $length) {
+            $result[] = substr($string, $start);
+        }
 
-		return $comparison_list;
-	}
+        return $result;
+    }
 
-	private function detectFieldExpression($field_text)
-	{
-		$field_expression = [];
+    public function parsePath(string $path): array|string
+    {
+        $first_bracket = strpos($path, self::$Operations[self::OPEN_INDEX]);
 
-		$prefix = self::$Operations[self::WANT_PREFIX];
-		$unprefixed = false;
-		switch($field_text[0] )
-		{
-			case self::$Operations[self::NEED_PREFIX] : $prefix = self::$Operations[self::NEED_PREFIX]; break;
-			case self::$Operations[self::REJECT_PREFIX] : $prefix = self::$Operations[self::REJECT_PREFIX]; break;
-			case self::$Operations[self::WANT_PREFIX] : $prefix = self::$Operations[self::WANT_PREFIX]; break;
-			default: $unprefixed=true; break;
-		}
-		$tmp_cursor = $unprefixed ? 0 : 1;
+        $name = substr($path, 0, $first_bracket);
+        $ranges = self::extractRanges($path);
+        if ($first_bracket === false || $ranges === false) {
+            return $path;
+        }
 
-		$weight = 0.50.'';
+        $res = [];
+        $res['name'] = $name;
+        $res['ranges'] = [];
 
-		$weight_start = strpos($field_text,'{',$tmp_cursor);
-		$weight_end = strpos($field_text,'}',$weight_start);
-		if($weight_start !== false && $weight_end !== false)
-		{
-			$weight = substr($field_text,$weight_start+1,($weight_end - $weight_start)-1);
-		}
+        foreach ($ranges as $range) {
+            $res['ranges'][] = self::parseRange($range);
+        }
 
-		$field = $weight_end !== false ? 			// If curly braces detected at all
-			substr($field_text,$weight_end+1) : 	// Then substr starting after }
-			substr($field_text,$tmp_cursor);		// Else Start Based on prefix at 0 or 1
+        return $res;
+    }
 
-		return [$prefix, $weight, $field];
-	}
+    function isRange($path): bool
+    {
+        // check if any one operator is present
+        $operators = [
+            self::$Operations[self::EQUAL_TO],
+            self::$Operations[self::NOT_EQUAL_TO],
+            self::$Operations[self::LESS_THAN],
+            self::$Operations[self::GREATER_THAN],
+            self::$Operations[self::LESS_THAN_EQUAL_TO],
+            self::$Operations[self::GREATER_THAN_EQUAL_TO],
+            self::$Operations[self::_AND_],
+            self::$Operations[self::_OR_],
+            self::$Operations[self::_HAS_],
+        ];
 
-	private function detectValueExpression($value_text)
-	{
-		$arr = explode(self::$Operations[self::DELIMITER], $value_text);
-		foreach($arr as &$a)
-			$a = trim($a);
-		return $arr;
-	}
+        foreach ($operators as $operator) {
+            if (str_contains($path, $operator)) {
+                return true;
+            }
+        }
 
-	private function detectQueryModifierList($current_scope, &$cursor)
-	{
-		$query_modifier_list=[];
-		if ($current_scope[$cursor] != self::$Operations[self::OPEN_DIRECTIVE])
-		{
-            return $query_modifier_list;
-		}
-		if(substr($current_scope,-1) != self::$Operations[self::CLOSE_DIRECTIVE])
-		{
-			throw new Exception('You done messed up your curly brackets!');
-		}
+        return false;
+    }
 
-		$query_modifier_text = substr($current_scope,$cursor+1, -1);
+    /**
+     * Parse a URI into its components
+     *
+     * @return array An array out of the components of the URL
+     * @access public
+     * @static
+     */
+    public function parseUri(): array
+    {
+        $primary = parse_url($this->url);
+        $res = [];
 
-		// LIMIT:1000,SORT:DESC
-		$query_modifiers = explode(',',$query_modifier_text);
+        $pathCombined = $primary['path'];
+        // only till a delimiter
+        $first_delim = self::getDelimiterPositionEfficient($pathCombined);
+        $first_delim = false;
+        $pathCombined = $first_delim === false ? $pathCombined : substr($pathCombined, 0, $first_delim);
 
-		foreach ($query_modifiers as $mod) {
-			$exploded_mod = explode(':', $mod);
-			$query_modifier_list[$exploded_mod[0]]=$exploded_mod[1];
-		}
-		return $query_modifier_list;
-	}
+        // check if there is a function call in the end
+        // like [].hello()
+        // so, detect the first .
+        //after the last ]
+        $last_bracket = strrpos($pathCombined, self::$Operations[self::CLOSE_INDEX]);
+        $first_dot = strpos($pathCombined, '.', $last_bracket);
+        if ($first_dot !== false) {
+            $res['function'] = substr($pathCombined, $first_dot + 1);
+        }
+
+        $paths = explode('/', $pathCombined);
+        $paths = array_filter($paths, function ($path) {
+            return $path !== '';
+        });
+        $res['scheme'] = $primary['scheme'] ?? '';
+        $res['host'] = $primary['host'] ?? '';
+        $res['port'] = $primary['port'] ?? '';
+        $res['queries'] = [];
+
+        if (isset($primary['query'])) {
+            $queries = explode('&', $primary['query']);
+            foreach ($queries as $query) {
+                $parts = explode('=', $query);
+                $res['queries'][$parts[0]] = $parts[1];
+            }
+        }
+
+        $res['paths'] = [];
+
+        foreach ($paths as $path) {
+            $res['paths'][] = self::parsePath($path);
+        }
+
+        return $res;
+    }
 }
