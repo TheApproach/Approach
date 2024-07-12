@@ -5,9 +5,9 @@
 
 	- Something that is available for use - or that can be used for support or help.
 	- An available supply that can be drawn on when needed.
-	- The ability to deal with a difficult or troublesome situation effectively; resourcefulness.
+	- The ability to deal with a challenging or troublesome situation effectively; resourcefulness.
 	- The total means available for infrastructure development, such as mineral wealth, labor force, and armaments.
-	- The total means available to a companny for increasing production or profit, including plant, labor, and raw material; assets.
+	- The total means available to a company for increasing production or profit, including plant, labor, and raw material; assets.
 	- Such means considered individually.
 
 	From The American Heritage® Dictionary of the English Language, 5th Edition
@@ -16,13 +16,13 @@
 namespace Approach\Resource;
 
 use Approach\nullstate;
+use Approach\Render\Node;
 use Approach\Resource\Aspect\aspects;
 use Approach\path;
 use Approach\Resource\Aspect\discover;
 use Approach\Resource\Aspect\Aspect;
 use Approach\Resource\Aspect\field;
 use Approach\Scope;
-use Approach\Resource\FilterParser;
 
 use Approach\Render\Stream;
 use Approach\Render\Node as RenderNode;
@@ -52,11 +52,11 @@ class Resource extends RenderNode implements Stream
 	// TODO: Add a Resource\context class to hold the Aspects
 	// Make it extend Resource, so that a context can hold bare resources but still reconfigure results
 	// Then work $__approach_resource_context out of the Resource class
-	private Aspect $__approach_resource_context; // intentionally verbose to avoid collisions
+	private array $__approach_resource_context; // intentionally verbose to avoid collisions
 	/**
 	 * @var $where
 	 *
-	 * Services are past as an array of URI strings, or as a Service object with 1 or more nodes.
+	 * Services are past as an array of URI strings, or as a Service object with one or more nodes.
 	 * Viable sources for the resource:
 	 * - Begin with a protocol, such as 'http://'
 	 * - Protocol is a class name, such as 'Approach\Resource\MySQL'
@@ -86,17 +86,18 @@ class Resource extends RenderNode implements Stream
 	) {
 		// Apply post-processing filters to the result set
 		/** Alter resource selection via Aspects	*/
-		$this->__approach_resource_context = new Aspect();
-		$this->__approach_resource_context['locate'] =
+        //TODO: Make to Aspect
+		$this->__approach_resource_context = [];
+		$this->__approach_resource_context[locate] =
 			$where ?? new RenderNode(content: '/');
-		$this->__approach_resource_context['pick'] = $pick ?? new Container();
-		$this->__approach_resource_context['sort'] = $sort ?? new Container();
-		$this->__approach_resource_context['weigh'] = $weigh ?? new Container();
-		$this->__approach_resource_context['sift'] = $sift ?? new Container();
-		$this->__approach_resource_context['divide'] =
-			$divide ?? new Container();
-		$this->__approach_resource_context['filter'] =
-			$filter ?? new Container();
+		$this->__approach_resource_context[pick] = new Aspect();
+		$this->__approach_resource_context[sort] = new Aspect();
+		$this->__approach_resource_context[weigh] = new Aspect();
+		$this->__approach_resource_context[sift] = new Aspect();
+		$this->__approach_resource_context[divide] =
+			new Aspect();
+		$this->__approach_resource_context[filter] =
+			new Aspect();
 	}
 
 	public function define()
@@ -127,8 +128,8 @@ class Resource extends RenderNode implements Stream
 		$this->tmp_parsed_url = [];
 		$tmp_parsed_url = [];
 
-		// check protocl exists, and parse it
-		if (strpos($where, '://') === false) {
+		// check protocol exists, and parse it
+		if (!str_contains($where, '://')) {
 			return nullstate::ambiguous;
 		}
 
@@ -142,7 +143,7 @@ class Resource extends RenderNode implements Stream
 			return nullstate::ambiguous;
 		}
 
-		if (strpos($where, '?') !== false) {
+		if (str_contains($where, '?')) {
 			list($where, $tmp_parsed_url['query_string']) = explode(
 				'?',
 				$where,
@@ -150,7 +151,7 @@ class Resource extends RenderNode implements Stream
 			);
 
 			// parse_str stores the result in the second argument, and urldecodes automatically
-			// RFC 3986 section 3.4 doesn't elaborate much on query strings, but I will assume
+			// RFC 3986 section 3.4 elaborates little on query strings, but I will assume
 			// that this function follows the spec
 			parse_str(
 				$tmp_parsed_url['query_string'],
@@ -497,17 +498,17 @@ class Resource extends RenderNode implements Stream
 		$by[quantity] = $by[quantity] ?? $weight;
 		$this->aspects[sort]->nodes[] = $by;
 	}
-	public function pick(Aspect $by)
+	public function pick(Aspect|array $by)
 	{
-		$this->aspects[pick]->nodes[] = $by;
+        $this->__approach_resource_context[pick]->nodes = array_merge($this->__approach_resource_context[pick]->nodes, $by);
 	}
-	public function sift(Aspect $by)
+	public function sift(Aspect|array $by)
 	{
-		$this->aspects[sift]->nodes[] = $by;
+        $this->__approach_resource_context[sift][] = $by;
 	}
-	public function divide(Aspect $by)
+	public function divide(Aspect|array $by)
 	{
-		$this->aspects[divide]->nodes[] = $by;
+        $this->__approach_resource_context[divide][] = $by;
 	}
 	public function filter(Aspect $by)
 	{
@@ -535,7 +536,7 @@ class Resource extends RenderNode implements Stream
 	 * Should always return a Service payload
 	 *
 	 * @param \Approach\Render\KeyedNode $service Any compatible payload container, ideally an object of type Service
-	 * @param \Approach\Render\Node $source Any object, string, id, etc.. representing the sort of formatted resource to be loaded
+	 * @param \Approach\Render\Node $source Any object, string, id, etc.. Representing the sort of formatted resource to be loaded
 	 * @return array The payload of the service
 	 * @access public
 	 */
@@ -1076,16 +1077,15 @@ trait user_trait
                 $left = trim(substr($part, 0, $pos));
                 $right = trim(substr($part, $pos + strlen($op)));
                 if (self::isRange($left)) {
-//                    $left = self::parseRange($left);
-                    $this->sift($left);
+                    $left = self::parseRange($left);
+//                    $this->sift($left);
                 }
                 if (self::isRange($right)) {
-//                    $right = self::parseRange($right);
-                    $this->sift($right);
+                    $right = self::parseRange($right);
+//                    $this->sift($right);
                 }
 
-                $this->comparisons[] = $this->c_count;
-                $this->c_count++;
+                $this->__approach_resource_context[sift][] = [$left, $op, $right];
                 return [$left, $op, $right];
             }
         }
@@ -1100,15 +1100,15 @@ trait user_trait
                         $value = self::parseRange($value);
                     }
 
-                    $this->comparisons[] = $this->c_count;
-                    $this->c_count++;
+                    $this->__approach_resource_context[sift][] = [$field, $opValue, $value];
                     return [$field, $opValue, $value];
                 }
             }
         }
 
-        $this->properties[] = $this->p_count;
-        $this->p_count++;
+//        $this->__approach_resource_context[pick]->nodes = array_merge($this->__approach_resource_context[pick]->nodes, [$part]);
+        //id
+        $this->__approach_resource_context[pick]->nodes[] = new Aspect(type: Aspect::container, content: $part);
         return [$part];
     }
 
@@ -1221,6 +1221,9 @@ trait user_trait
         }
 
         $res['paths'] = [];
+        $res['properties'] = $this->properties;
+        $res['comparisons'] = $this->comparisons;
+
 
         foreach ($paths as $path) {
             $res['paths'][] = self::parsePath($path);
