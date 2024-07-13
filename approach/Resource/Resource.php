@@ -925,12 +925,6 @@ trait user_trait
 		});
 	}
 
-    public mixed $url;
-    public array $properties = [];
-    public array $comparisons = [];
-    public int $p_count = 0;
-    public int $c_count = 0;
-
     const ASSIGN = 0;
     const EQUAL_TO = 1;
     const NOT_EQUAL_TO = 2;
@@ -1221,9 +1215,6 @@ trait user_trait
         }
 
         $res['paths'] = [];
-        $res['properties'] = $this->properties;
-        $res['comparisons'] = $this->comparisons;
-
 
         foreach ($paths as $path) {
             $res['paths'][] = self::parsePath($path);
