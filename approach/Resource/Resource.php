@@ -938,8 +938,8 @@ trait user_trait
     const _HAS_ = 9;
 
     const OPEN_DIRECTIVE = 10;
-    const CLOSE_DIRECTIVE = 11;
-    const OPEN_GROUP = 12;
+		const CLOSE_DIRECTIVE = 11;
+		const OPEN_GROUP = 12;
     const CLOSE_GROUP = 13;
     const OPEN_INDEX = 14;
     const CLOSE_INDEX = 15;
@@ -974,7 +974,7 @@ trait user_trait
         self::CLOSE_WEIGHT => '}',
         self::NEED_PREFIX => '$',
         self::REJECT_PREFIX => '!',
-        self::WANT_PREFIX => '~',
+        self::WANT_PREFIX => '^',
         self::DELIMITER => ',',
     ];
 
@@ -1062,6 +1062,35 @@ trait user_trait
         return $result;
     }
 
+	function parsePartHead($head): array|string{
+		// parse ! or ^ in ! name 
+		// check if self::$Operations[self::WANT_PREFIX] or self::$Operations[self::REJECT_PREFIX] is present
+		$logicalOps = [self::$Operations[self::WANT_PREFIX], self::$Operations[self::REJECT_PREFIX]];
+		foreach ($logicalOps as $op) {
+			if (($pos = strpos($head, $op)) !== false) {
+				$right = trim(substr($head, $pos + strlen($op)));
+				return [$op, $right];
+			}
+		}
+
+		return $head;
+	}
+
+	function parsePartTail($tail): array|string{
+		// check if self::$Operations[self::Need] is present
+		// if it is, it would be of form value $ 5
+		// parse the $ and 5
+		$logicalOps = [self::$Operations[self::NEED_PREFIX]];
+		foreach ($logicalOps as $op) {
+			if (($pos = strpos($tail, $op)) !== false) {
+				$left = trim(substr($tail, 0, $pos));
+				$right = trim(substr($tail, $pos + strlen($op)));
+				return [$left, $right, $op];
+			}
+		}
+		return $tail;
+	}
+
     function parsePart($part): array
     {
         // Check for AND, OR, HAS
@@ -1072,11 +1101,9 @@ trait user_trait
                 $right = trim(substr($part, $pos + strlen($op)));
                 if (self::isRange($left)) {
                     $left = self::parseRange($left);
-//                    $this->sift($left);
                 }
                 if (self::isRange($right)) {
                     $right = self::parseRange($right);
-//                    $this->sift($right);
                 }
 
                 $this->__approach_resource_context[sift][] = [$left, $op, $right];
@@ -1087,12 +1114,39 @@ trait user_trait
         foreach (self::$Operations as $opValue) {
             if (($pos = strpos($part, $opValue)) !== false) {
                 $field = trim(substr($part, 0, $pos));
+				$field = $this->parsePartHead($field);
                 $value = trim(substr($part, $pos + strlen($opValue)));
+				$value = $this->parsePartTail($value);
                 if (!empty($field) && $value !== '') {
-                    if (self::isRange($value)) {
-                        $value = substr($value, 1, -1);
-                        $value = self::parseRange($value);
-                    }
+					if (is_string($value)){
+						$value = substr($value, 1, -1);
+						if(self::isRange($value)){
+							$value = self::parseRange($value);
+						}
+					} else {
+						$value[0] = substr($value[0], 1, -1);
+						if(self::isRange($value[0])){
+							$value = self::parseRange($value[0]);
+						}
+					}
+
+					$weights = [];
+
+					if(is_array($value)){
+						$weights['value'] = $value[1];
+						$value = $value[0];
+					} 
+					if (is_array($field)){
+						$weights['qualifier'] = $field[0];
+						$field = $field[1];
+					} else if (is_array($value)){
+						$weights['qualifier'] = $value[2];
+					}
+
+					if($weights){
+						$this->__approach_resource_context[sift][] = [$field, $opValue, $value, 'weights' => $weights];
+						return [$field, $opValue, $value, 'weights' => $weights];
+					}
 
                     $this->__approach_resource_context[sift][] = [$field, $opValue, $value];
                     return [$field, $opValue, $value];
@@ -1187,10 +1241,7 @@ trait user_trait
         $first_delim = false;
         $pathCombined = $first_delim === false ? $pathCombined : substr($pathCombined, 0, $first_delim);
 
-        // check if there is a function call in the end
-        // like [].hello()
-        // so, detect the first .
-        //after the last ]
+		// function parsing 
         $last_bracket = strrpos($pathCombined, self::$Operations[self::CLOSE_INDEX]);
         $first_dot = strpos($pathCombined, '.', $last_bracket);
         if ($first_dot !== false) {
