@@ -98,6 +98,8 @@ class Resource extends RenderNode implements Stream
 			new Aspect();
 		$this->__approach_resource_context[filter] =
 			new Aspect();
+
+		$this->parseUri($where);
 	}
 
 	public function define()
@@ -492,19 +494,18 @@ class Resource extends RenderNode implements Stream
 		$by[quality] = $by[quality] ?? $ascending;
 		$this->aspects[sort]->nodes[$by->label] = $by;
 	}
-
-	public function weigh(field|Aspect $by, int $weight = 1)
+	public function weigh($siftdex, $weight = 1.0)
 	{
-		$by[quantity] = $by[quantity] ?? $weight;
-		$this->aspects[sort]->nodes[] = $by;
+		$this->__approach_resource_context[weigh][] = [$siftdex, $weight];
 	}
 	public function pick(Aspect|array $by)
 	{
-        $this->__approach_resource_context[pick]->nodes = array_merge($this->__approach_resource_context[pick]->nodes, $by);
+        $this->__approach_resource_context[pick] = array_merge($this->__approach_resource_context[pick], $by);
 	}
-	public function sift(Aspect|array $by)
+	public function sift(Aspect|array $by, $qualifier = null, $weight = 1.0)
 	{
-        $this->__approach_resource_context[sift][] = $by;
+        $this->__approach_resource_context[sift][] = [$qualifier, ...$by];
+		$this->weigh(count( $this->__approach_resource_context[ sift ]), $weight);
 	}
 	public function divide(Aspect|array $by)
 	{
