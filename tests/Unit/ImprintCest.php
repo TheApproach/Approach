@@ -49,7 +49,7 @@ class ImprintCest
     {
         $imprint = new Imprint(
             imprint: 'test/test.xml',
-            imprint_base: $this->scope->getPath(path::pattern)
+            imprint_dir: $this->scope->getPath(path::pattern)
         );
 
         $I->assertInstanceOf(Imprint::class, $imprint);
@@ -59,7 +59,7 @@ class ImprintCest
     {
         $imprint = new Imprint(
             imprint: 'test/test.xml',
-            imprint_base: $this->scope->getPath(path::pattern)
+            imprint_dir: $this->scope->getPath(path::pattern)
         );
 
         $preparedSuccessful = $imprint->Prepare();
@@ -98,7 +98,7 @@ class ImprintCest
     {
         $imprint = new Imprint(
             imprint: 'test/hellotoken.xml',
-            imprint_base: $this->scope->getPath(path::pattern)
+            imprint_dir: $this->scope->getPath(path::pattern)
         );
 
         $preparedSuccessful = $imprint->Prepare();
@@ -117,7 +117,7 @@ class ImprintCest
     // {
     // 	$imprint = new Imprint(
     // 		imprint: 'test/token_test.xml',
-    // 		imprint_base: $this->scope::$Active->GetPath(path::support)
+    // 		imprint_dir: $this->scope::$Active->GetPath(path::support)
     // 	);
 
     // 	$preparedSuccessful = $imprint->Prepare();
@@ -160,7 +160,7 @@ class ImprintCest
     {
         $imprint = new Imprint(
             imprint: 'test/hellotoken.xml',
-            imprint_base: $this->scope->getPath(path::pattern)
+            imprint_dir: $this->scope->getPath(path::pattern)
         );
 
         $preparedSuccessful = $imprint->Prepare();
@@ -214,7 +214,7 @@ class ImprintCest
     public function checkExportConstructor(UnitTester $I){
         $imprint = new Imprint(
             imprint: 'test/hellotoken.xml',
-            imprint_base: $this->scope->getPath(path::pattern)
+            imprint_dir: $this->scope->getPath(path::pattern)
         );
 
         $preparedSuccessful = $imprint->Prepare();
@@ -223,7 +223,7 @@ class ImprintCest
         $samples = [];
         foreach($use_cases as $key => $use_case){
             //... simulate instrucitons in exportTree() timeline leading up to where node name is instantiated
-            $constructor = $imprint->exportConstructor(...$use_case);
+            $constructor = $imprint->exportNodeConstructor(...$use_case);
             $I->assertEquals(
                 $samples[$key], 
                 $constructor, 
@@ -235,7 +235,7 @@ class ImprintCest
     public function checkExportParameterBlocks(UnitTester $I){
         $imprint = new Imprint(
             imprint: 'test/hellotoken.xml',
-            imprint_base: $this->scope->getPath(path::pattern)
+            imprint_dir: $this->scope->getPath(path::pattern)
         );
 
         $preparedSuccessful = $imprint->Prepare();
@@ -256,7 +256,7 @@ class ImprintCest
     public function checkExportTokenNodes(UnitTester $I){
         $imprint = new Imprint(
             imprint: 'test/hellotoken.xml',
-            imprint_base: $this->scope->getPath(path::pattern)
+            imprint_dir: $this->scope->getPath(path::pattern)
         );
 
         $preparedSuccessful = $imprint->Prepare();
@@ -280,7 +280,7 @@ class ImprintCest
     {
         $imprint = new Imprint(
             imprint: 'test/hellotoken.xml',
-            imprint_base: $this->scope->getPath(path::pattern)
+            imprint_dir: $this->scope->getPath(path::pattern)
         );
 
         $imprint->Prepare();
@@ -293,7 +293,7 @@ class ImprintCest
     {
         $imprint = new Imprint(
             imprint: 'test/hellotoken.xml',
-            imprint_base: $this->scope->getPath(path::pattern)
+            imprint_dir: $this->scope->getPath(path::pattern)
         );
 
         $imprint->Prepare();
@@ -308,7 +308,7 @@ class ImprintCest
 
             $imprint = new Imprint(
                 imprint: 'test/hellotoken.xml',
-                imprint_base: $this->scope->getPath(path::pattern)
+                imprint_dir: $this->scope->getPath(path::pattern)
             );
             $exportedTrees = [];
             $imprint->Prepare();

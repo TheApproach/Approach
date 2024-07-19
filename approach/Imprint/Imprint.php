@@ -678,15 +678,36 @@ class Imprint extends Render\Node\Keyed
      */
     public function recurse(simpleXMLElement $element, string $render_type = Node::class): Render\Node | Stream
     {
-        // Create a new node of the given render type
-        $render_node = $this->createNodeFromSimpleXML($render_type, $element);
+        $stringified = $element->asXML();
+        $result = new Render\Node();
 
-        // Cascade over all child nodes of the current element, diving deepr into the tree
-        foreach ($element->children() as $child) {
-            $render_node->nodes[] = $this->recurse($child, $render_type);
+        $has_token = str_contains($stringified, '[@');
+        $has_work = str_contains($stringified, '<Work:');
+        $has_render = str_contains($stringified, '<Render:');
+        $has_imprint = str_contains($stringified, '<Imprint:');
+        $has_resource = str_contains($stringified, '<Resource:');
+        $has_component = str_contains($stringified, '<Component:');
+        $has_composition = str_contains($stringified, '<Composition:');
+        $has_service_ns = str_contains($stringified, '<Service:');
+        $has_instrument = str_contains($stringified, '<Instrument:');
+        $has_ensemble = str_contains($stringified, '<Ensemble:');
+        $has_orchestra = str_contains($stringified, '<Orchestra:');
+
+        $has_imprint_concept = 
+        $has_token | $has_render | $has_imprint | 
+        $has_resource | $has_component | $has_composition |
+        $has_service_ns | $has_instrument | $has_ensemble | $has_orchestra;
+
+        if(!$has_imprint_concept){
+        return new Node( $stringified );
         }
+        else{ 
+            foreach($element->children() as $child){
+                $result->nodes[] = $this->recurse($child, $render_type);
+            }
 
-        return $render_node;
+            return new $render_type($result);
+        }
     }
 
     /**
