@@ -71,7 +71,7 @@ trait Associative
     {
         if( $value instanceof Keyed ){
             $this->set( (string)$value->name, (string)$value->content );
-        }
+        } 
         else{
             $this->set((string)$offset, $value);
         }
