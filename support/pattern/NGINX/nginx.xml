@@ -1,0 +1,106 @@
+<Imprint xmlns:Component="Component://approach.local" xmlns:Imprint="Render://approach.local" xmlns:Render="Render://approach.local">
+	<Imprint:Pattern name="conf" render:type="Node">
+
+#####################
+### HTTP  SECTION ###
+#####################
+
+server {
+	listen       80;
+	server_name *.[@ userDomain @] [@ userDomain @];
+	return 301 https://$host$request_uri;	# Redirect To HTTPS
+}
+
+
+#####################
+### HTTPS SECTION ###
+#####################
+
+server {
+
+	##### Static Directory/Subdomain #####
+	######################################
+
+	listen       *:443;
+	server_name  static.[@ userDomain @];
+	root /srv/[@ project_name @]/static;
+
+	#ssl    on;
+    ssl_certificate /srv/certs/[@ userDomain @]/fullchain.pem;
+    ssl_certificate_key /srv/certs/[@ userDomain @]/privkey.pem;
+
+	location /	{
+		add_header Access-Control-Allow-Origin "$http_origin";
+	}
+	index index.html;
+
+}
+
+server {
+
+	##### Web Service Directory/Subdomain #####
+	###########################################
+
+	listen	   *:443;
+	server_name  service.[@ userDomain @];
+	client_max_body_size 40M;
+
+	#ssl	on;
+    ssl_certificate /srv/certs/[@ userDomain @]/fullchain.pem;
+    ssl_certificate_key /srv/certs/[@ userDomain @]/privkey.pem;
+
+	index service.php;
+	root /srv/[@ project_name @]/service/;
+
+	if ($request_method = OPTIONS) { return 204; }
+
+	location /
+	{
+		include		fastcgi_params;
+		fastcgi_intercept_errors on;
+		fastcgi_index  service.php;
+		fastcgi_param  SCRIPT_NAME  $document_root/src/Service/$fastcgi_script_name;
+		fastcgi_param  SCRIPT_FILENAME  $document_root/src/Service/$fastcgi_script_name;
+		fastcgi_pass   unix:/var/run/php-fpm/[@ project_name @].sock;
+	}
+}
+
+server {
+
+	##### Primary Site Roots #####
+	##############################
+
+	listen	   *:443;
+	server_name  [@ userDomain @] www.[@ userDomain @];
+	root /srv/[@ project_name @];
+
+	#ssl	on;
+    ssl_certificate /srv/certs/[@ userDomain @]/fullchain.pem;
+    ssl_certificate_key /srv/certs/[@ userDomain @]/privkey.pem;
+
+	location / {
+		include /etc/nginx/fastcgi_params;
+		fastcgi_intercept_errors on;
+		fastcgi_param	ORIGIN_DOMAIN  "[@ userDomain @]";
+		fastcgi_param	SCRIPT_NAME  $document_root$fastcgi_script_name;
+		fastcgi_param	SCRIPT_FILENAME /srv/[@ project_name @]/src/main.php;
+		fastcgi_pass	unix:/var/run/php-fpm/[@ project_name @].sock;
+	}
+
+	location /__static
+	{
+		alias /srv/[@ project_name @]/static;
+	}
+	location /__service
+	{
+		root /srv/[@ project_name @]/service;
+		include		fastcgi_params;
+		fastcgi_intercept_errors on;
+		fastcgi_index  service.php;
+		fastcgi_param  SCRIPT_FILENAME  $document_root/src/Service/$fastcgi_script_name;
+		fastcgi_param  SCRIPT_NAME  $document_root/src/Service/$fastcgi_script_name;
+		fastcgi_pass   unix:/var/run/php-fpm/[@ project_name @].sock;
+	}
+}
+	</Imprint:Pattern>
+</Imprint>
