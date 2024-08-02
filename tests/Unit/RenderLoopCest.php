@@ -1,93 +1,46 @@
 <?php
 
-namespace Approach\Render;
 
-use \Approach\Render\Node;
-use \Approach\Render\Stream;
-use \Stringable;
-use \Closure;
+namespace Tests\Unit;
 
-class ifNode extends Node
+use Approach\Imprint\Imprint;
+use Approach\path;
+use Approach\runtime;
+use Approach\Scope;
+use Tests\Support\UnitTester;
+
+class RenderLoopCest
 {
-	public function __construct(
-		public $content = null,
-		public $condition = null
-	) {
-		if (
-			!($condition instanceof Closure)	&&
-			!is_callable($condition)			&&
-			!is_bool($condition)				&&
-			!($condition instanceof Token)
-		) {
-			if (static::exempt($condition)) {
-				$this->condition = static::convert($condition);
-			} else throw new \Exception('RenderLoop condition must be a Closure, callable, or boolean.');
-		}
+    private Scope $scope;
 
-		// $this->condition is a bool or something we can call to get a bool
-		$this->condition = $condition;
-		parent::__construct($content);
-	}
+    public function _before(UnitTester $I)
+    {
+        $path_to_project = __DIR__ . '/../../support/test_project';
+        $path_to_approach = __DIR__ . '/../../approach/';
+        $path_to_support = __DIR__ . '/../../support/';
 
-	public static function exempt($exempt)
-	{
-		// Allow things we can static::convert() to bool
-		return is_string($exempt) || is_int($exempt);
-	}
+        $this->scope = new Scope(
+            project: 'MyProject',
+            path: [
+                path::project->value => $path_to_project,
+                path::installed->value => $path_to_approach,
+                path::support->value => $path_to_support,
+                path::pattern->value => $path_to_support . 'pattern',
+            ],
+        );
 
-	public static function convert($condition)
-	{
-		if (is_bool($condition)) {
-			return $condition;
-		}
-		if (is_string($condition)) {
-			$condition = strtolower(trim($condition));
-			if ($condition === 'true' || $condition === '1') {
-				return true;
-			} else if ($condition === 'false' || $condition === '0') {
-				return false;
-			} else throw new \Exception('Render\ifNode could not convert() string to boolean faithfully.');
-		}
-		if (is_int($condition)) {
-			$error_level = error_reporting();
-			if ($condition > 1 && $error_level & E_USER_WARNING) {
-				trigger_error(
-					'Render\ifNode hit an ambiguous cast from int ' . $condition . ' to bool.' . PHP_EOL .
-						'Called from: ' . debug_backtrace()[0]['file'] . ':' . debug_backtrace()[0]['line'],
-					E_USER_WARNING
-				);
-			}
-			return $condition === 1;
-		} elseif (is_callable($condition) || $condition instanceof Closure) {
-			return static::convert(static::$condition());
-		}
-		return false;
-	}
-	
-	public function RenderCorpus(): \Traversable|Stream|string|Stringable
-	{
-		// echo PHP_EOL . 'ifNode::RenderCorpus()';
-		$condition = $this->condition;
-		// echo PHP_EOL . 'with condition: ' . var_dump($condition);
+    }
 
-		if ($this->condition instanceof Token) {
-			$condition = $this->condition->content;
-		}
-		if (is_callable($condition) || $condition instanceof Token) {
-			$condition =
-				static::convert(
-					($condition)()
-				);
-		}
+    // tests
+    public function tryToTest(UnitTester $I)
+    {
+        $imprint = new Imprint(
+            imprint: 'MariaDB/locate.xml',
+            imprint_dir: $this->scope->getPath(path::pattern)
+        );
 
-		if ($condition === true )
-		{
-			yield $this->content;
+        $preparedSuccessful = $imprint->Prepare();
 
-			foreach ($this->nodes as $n) {
-				yield from $n->stream();
-			}
-		}
-	}
+        $imprint->Mint('locate');
+    }
 }
-

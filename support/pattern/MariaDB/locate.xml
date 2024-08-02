@@ -15,7 +15,7 @@ WHERE
 		calculated_priority > 0
 		AND
 		(
-			<Render:If condition="[@ need @]">
+			TRUE
 		)
 
 ORDER BY 
