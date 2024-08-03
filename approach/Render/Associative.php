@@ -2,6 +2,9 @@
 
 namespace Approach\Render;
 
+use Approach\Render\Node\Keyed;
+
+use function PHPSTORM_META\type;
 
 trait Associative
 {
@@ -66,7 +69,12 @@ trait Associative
 
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        $this->set((string)$offset, $value);
+        if( $value instanceof Keyed ){
+            $this->set( (string)$value->name, (string)$value->content );
+        } 
+        else{
+            $this->set((string)$offset, $value);
+        }
     }
 
     public function offsetUnset(mixed $offset): void
