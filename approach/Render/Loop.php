@@ -12,12 +12,12 @@ class Loop extends Node
 	public function __construct(
 		public $content = null,
 		public $what = [],
-		public $as = 'token'
+		public $as = ''
 	) {
 		if (
 			!($what instanceof Closure)	&&
 			!is_callable($what)			&&
-			!is_array($what)				&&
+			!is_array($what)			&&
 			!($what instanceof Node)
 		) {
 			if (static::exempt($what)) {

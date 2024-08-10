@@ -5,6 +5,8 @@ namespace Approach\Resource\MariaDB;
 use \Approach\Resource\Resource;
 use \Approach\Resource\MariaDB\Aspect\Table as discovery;
 use \Approach\Resource\Aspect\Aspect;
+use Approach\Resource\MariaDB\Table\sourceability;
+use Approach\Resource\sourceability as root_sourceability;
 
 /**
  * MariaDB Table resource class
@@ -30,6 +32,10 @@ class Table extends Resource
 	public $connector_class = '\\Approach\\Service\\MariaDB\\Connector';
 	public $resource_proto = 'MariaDB';
 
+	// use discovery;
+	use root_sourceability, sourceability{
+		sourceability::push insteadof root_sourceability;
+	}
 
 	public function __construct(public $name = 'resources', public $database=null)
 	{

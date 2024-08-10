@@ -19,7 +19,7 @@ use \Approach\nullstate;
  * 
  */
 
-class field extends Container{
+	class field extends Container{
 	/*
 	The maps will be updated by child classes with additional constants, but will always include
 	the above constants, with the same values, in the same order.

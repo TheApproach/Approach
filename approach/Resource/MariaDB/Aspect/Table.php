@@ -383,7 +383,8 @@ class Table extends discover
         $dObj = new \stdClass();
         $dObj->filename = $aspect_path . '/profile.php';
         $dObj->location = $fields_info['data']->location;
-        static::MintProfile($dObj, $fields_info['columns']); //,  $classpath);
+		$dObj->source_name = $table;
+        static::MintProfile($dObj, $fields_info['columns'], $table); //,  $classpath);
     }
 
 
@@ -533,7 +534,7 @@ class Table extends discover
 			'.php';
 	}
 
-    public static function MintProfile(object $dataObject, $columns): void
+    public static function MintProfile(object $dataObject, $columns, $source_name): void
     {
         $filename = $dataObject->filename;
 
@@ -554,11 +555,12 @@ class Table extends discover
             $uses
             . PHP_EOL . PHP_EOL;
 
-        $php .= 'trait profile' . PHP_EOL;
+		$php .= 'trait profile' . PHP_EOL;
         $php .=  '{' . PHP_EOL;
-
+		
+		$php .= 'static $source = \'' . $source_name.'\';'.  PHP_EOL;
         $php .= 'static array $profile = [' . PHP_EOL;
-        $php .= "\t" . 'Aspect::field => [' . PHP_EOL;
+		$php .= "\t" . 'Aspect::field => [' . PHP_EOL;
 
         $metadata = [
             'label', 'type', 'default', 'source_type', 'source_default',
@@ -580,7 +582,24 @@ class Table extends discover
         $php .= "\t" . '],' . PHP_EOL;
         $php .= '];' . PHP_EOL;
 
-        $php .= PHP_EOL . '}' . PHP_EOL;
+		$matchs = [
+			"match",
+			"getType",
+			"getDefault",
+			"getSourceType",
+			"getSourceDefault",
+			"isNullable",
+			"getDescription",
+			"isAccessor",
+			"getReferenceByAccessor",
+			"getPrimaryAccessor",
+			"getProfileProperties"];
+
+		foreach ($matchs as $match) {
+			$php .= 'public static function field_' . $match . '($what){	return SelfField::' . $match . '($what);	}' . PHP_EOL;
+		}
+
+        $php .= PHP_EOL . '}' . PHP_EOL; 
 
         // Write the file
         file_put_contents($filename, $php);

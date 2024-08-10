@@ -1,6 +1,5 @@
 <?php
-
-namespace Approach\Service;
+namespace Approach\Resource;
 
 use \Approach\Render\Node;
 use \Approach\Resource\Resource;
@@ -13,9 +12,9 @@ trait sourceability
 	abstract public static function pull(Stringable|string|Node $where): ?Node;
 	abstract public static function load(Stringable|string|Node $where): ?Node;
 
-	abstract public function save(Resource $where): ?bool;
-	abstract public function push(Resource $where): ?bool;
-	abstract public function release(Resource $where): ?bool;
+	abstract public static function save(Resource $where): ?bool;
+	abstract public static function push(Resource $where): ?bool;
+	abstract public static function release(Resource $where): ?bool;
 
 
 	// Create a Service child class with MyConnector::connect() and MyConnector::disconnect()
@@ -30,10 +29,10 @@ trait sourceability
 			// if !connected, connect
 			// if !acquired target, acquire target
 			// push pre-acquired resource to target
-	abstract public function transport();
+	abstract public static function transport();
 
 	// Derrive branchable->promise() from Service\Branch to define promises
-	abstract public function promise();
+	abstract public static function promise();
 
 	/**
 	 *  promise 
@@ -42,11 +41,11 @@ trait sourceability
 	 *	- send $intent & $support to acquired $where
 	 * 	- recieve response resource 
 	 */
-	abstract public function act($where, $intent, ...$support);
+	abstract public static function act($where, $intent, ...$support);
 
 	// two-way transport 
 	// from Service|Resource pair to Service|Resource pair
-	abstract public function exchange();
+	abstract public static function exchange();
 	// {
 		// if !connected, connect
 		// if !acquired target, acquire target
@@ -64,7 +63,7 @@ trait sourceability
 
 		// see approach/Dataset/exchangeTransport->prep_exchange()
 	// }
-	abstract public function bestow($from, $to, $who);
+	abstract public static function bestow($from, $to, $who);
 	// {
 		/**
 		 * $from and $to both describe location and entity (who have associated RBAC permissions and security realm) to act on
@@ -119,12 +118,13 @@ trait sourceability
 		 */
 	// }
 	
-	abstract public function locate($where);
+	abstract public static function locate($where);
 		// robust fetch
 
-	abstract public function interact();
+	abstract public static function interact();
 		// multi-step calls to act, recieve, handler
 
-	abstract public function discover(null|Resource|Stringable|string $which): nullstate;
+	// Discovery now part of MyLibrary/Aspect/MyType.php
+	// abstract public function discover(null|Resource|Stringable|string $which): nullstate;
 		// return nullstate::defined;
 }

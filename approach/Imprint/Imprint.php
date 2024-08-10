@@ -5,6 +5,7 @@ namespace Approach\Imprint;
 use Approach\nullstate;
 use Approach\path;
 use Approach\Render;
+use Approach\Render\Container;
 use Approach\Render\Attribute;
 use Approach\Render\HTML;
 use Approach\Render\Node;
@@ -23,7 +24,7 @@ class Imprint extends Render\Node\Keyed
     const TOKEN_SYMBOL_END = ' @]';
 
     public array $tokens = [];
-	public array $found_tokens = [];
+    public array $found_tokens = [];
     public string $imprint_dir;
 
     protected array $_used_symbols = [];
@@ -32,6 +33,12 @@ class Imprint extends Render\Node\Keyed
     protected $register_token = [];
     protected $generation_count = [];
     protected $resolved_symbols = [];
+
+    public function sanitizeInput($input){
+        $input = rtrim($input, "\\ \n\r\t\v\0" );
+        
+        return $input;
+    }
 
     public function __construct(public null|array|\Traversable $pattern = null, public ?string $imprint = null, ?string $imprint_dir = null)
     {
@@ -47,121 +54,6 @@ class Imprint extends Render\Node\Keyed
     public function __invoke()
     {
         return $this->render();
-    }
-
-    /**
-     * NOTICE: This is a temporary solution to the problem of creating a new instance of an \Approach\Render\ class from a string.
-     * 
-     * new ReflectionMethod( $render_type, '__construct' )->invokeArgs( $r, $args );
-     * should probably be used as a better temp fix
-     * 
-     * This function, Imprint::createNodeFromSimpleXML(), will still need to map standard property names to the correct trait property names.
-     * 
-     * It's fine to have this here, as it ultimately is a function of the Imprint concept.
-     * Imprints are stored in XML format, so XML and HTML are the only two render types that need to support special cases.
-     * For other render types the attributes are simply interpreted as a dictionary of constructor arguments.
-     * 
-     * This way, if a user implements a complex render type, they can simply extend the Imprint class:
-     * - overload this function to handle their custom render type
-     * - calling the parent function to get the default behavior for built-in render types
-     * - usually won't be necessary, as the default behavior is to simply pass the attributes as constructor arguments
-     */
-
-    protected function createNodeFromSimpleXML(string $render_type, \simpleXMLElement $element): Stream | Node
-    {
-
-        // if the element has Render:type or is a node with Render:myType, then override render_type with myType
-        if ($element->attributes('render', true)->type) {
-            $render_type = $this->getRenderTypeFromElement($element);
-        }
-
-        $args = [];
-        $classes = [];
-        $id = null;
-
-        // handle attributes
-        $attributesArray = self::extractAttributes($element);
-        $imprintAttributes = self::extractAttributes($element, 'Imprint', true);
-        // $renderAttributes = self::extractAttributes($element, 'render', true);
-
-        foreach ($attributesArray as $key => &$value) {
-            // Move class and id attributes to their respective properties so they aren't duplicated as XML attributes
-            if ($key === 'id' && is_a($render_type, XML::class, true)) {
-                $id = $value;
-                unset($attributesArray[$key]);
-            }
-            // Move class and id attributes to their respective properties so they aren't duplicated as XML attributes
-            if ($key === 'class' && is_a($render_type, HTML::class, true)) {
-                $value = $this->hasToken($value) ? $this->stringableToToken($value, true) : $value;
-                $classes = [...$classes, $value];
-                unset($attributesArray[$key]);
-            }
-        }
-
-        $classes = Attribute::fromArray($classes);
-        $attributes = Attribute::fromArray($attributesArray);
-
-        foreach ($attributes->nodes as &$attr) {
-            $attr->name =
-                $this->hasToken($attr->name . '') ?
-                $this->stringableToToken($attr->name . '', true) : $attr->name;
-
-            $attr->content =
-                $this->hasToken($attr->content . '') ?
-                $this->stringableToToken($attr->content . '', true) : $attr->content;
-        }
-        // end handle attributes
-
-        switch ($render_type) {
-            case '\\' . HTML::class:
-                // Text node simpleXMLElement, treat as content
-                if ($element->nodeType == XML_TEXT_NODE) {
-                    $args = [
-                        'content'       => trim((string) $element),
-                        'tag'           => null
-                    ];
-                }
-
-                // Normal simpleXMLElement, don't treat as content
-                else
-                    $args = [
-                        'content'       => trim((string) $element),
-                        'tag'           => (string) $element->getName(),
-                        'classes'       => $classes,
-                        'attributes'    => $attributes,     // convert attributes to patternAttribute
-                        'id'            => $id,
-                        'prerender'     => false
-                    ];
-                break;
-
-            case '\\' . XML::class:
-                $args = [
-                    'tag'           => (string) $element->getName(),
-                    'content'       => trim((string) $element),
-                    'attributes'    => $attributes,
-                    'prerender'     => false
-                ];
-                break;
-            case '\\' . Node::class:
-            default:
-                $args['content'] = trim((string) $element);
-                #foreach attributes add to args array
-                foreach ($attributes->nodes as &$attr) {
-                    $args[$attr->name] = $attr->content;
-                }
-                break;
-        }
-
-        if (!empty($args['content']) && $this->hasToken($args['content']))
-            $args['content'] = $this->stringableToToken($args['content'], true);
-
-        $r = new $render_type(...$args);
-
-        if (isset($imprintAttributes['bind'])) {
-            $this->_bound[$r->_render_id] = $imprintAttributes['bind'];
-        }
-
-        return $r;
     }
 
     public function exportNodeConstructor($node, $tab = '')
@@ -185,15 +77,15 @@ class Imprint extends Render\Node\Keyed
         $blocks = $this->exportParameterBlocks($node, $parameters, $reflection, $tab);
 
         /**
-         * Each parameter may be assigned a value or a symbol
-         * Symbols are only used if a parameter block was produced
-         * 
-         * If a parameter block was produced, $block[$param]['symbol'] will equal
-         * the name of the symbol to use for the parameter, 
-         * 
-         * $block[$param]['content'] will be a code block instantiating the symbol to prepend
-         * Otherwise either use $node->$param or skip if it is not set
-         */
+     * Each parameter may be assigned a value or a symbol
+     * Symbols are only used if a parameter block was produced
+     * 
+     * If a parameter block was produced, $block[$param]['symbol'] will equal
+     * the name of the symbol to use for the parameter, 
+     * 
+     * $block[$param]['content'] will be a code block instantiating the symbol to prepend
+     * Otherwise either use $node->$param or skip if it is not set
+     */
         foreach ($parameters as $parameter) {
             $assignment = '';
             $param = $parameter->getName();
@@ -254,7 +146,14 @@ class Imprint extends Render\Node\Keyed
         $startPos = strpos($s, $start);
         $endPos = strpos($s, $end, $startPos);
 
-        return substr($s, $startPos, $endPos - $startPos + strlen($end));
+        return trim(
+            substr(
+                $s, 
+                $startPos, 
+                $endPos - $startPos + strlen($end)
+            ),
+            self::TOKEN_SYMBOL_START . self::TOKEN_SYMBOL_END. "\t\r\n\0"
+        );
     }
 
 
@@ -362,6 +261,7 @@ class Imprint extends Render\Node\Keyed
         return $result;
     }
 
+    /** LIVE CODE **/
     /**
      * exportNode
      * Converts a tree of objects which share Render\Node as a common ancestor into
@@ -405,6 +305,7 @@ class Imprint extends Render\Node\Keyed
 
         $symbol = $export_symbol ?? $this->exportNodeSymbol($node);
 
+        echo 'Exporting constructor for '.$symbol.' of type: '. $type.PHP_EOL;
         $constructor = $this->exportNodeConstructor($node, $tab);
 
         $append = $parent === null ? '$' : '$' . $parent . '[] = $';
@@ -455,11 +356,11 @@ class Imprint extends Render\Node\Keyed
         }
 
         if ($type === 'Token' && !isset($this->_bound[$id])) {
-			// normally _bound is set during Imprint::Prepare() when it encounters a node with 
-			// the Imprint:bind="symbol" attribute - We will use it to bind token symbols here
-			$this->_bound[$id] = 'this->token_nodes[\'' . $node->name . '\']';
-			$this->found_tokens[$node->name] = $id ;
-			
+            // normally _bound is set during Imprint::Prepare() when it encounters a node with 
+            // the Imprint:bind="symbol" attribute - We will use it to bind token symbols here
+            $this->_bound[$id] = 'this->token_nodes[\'' . $node->name . '\']';
+            $this->found_tokens[$node->name] = $id;
+
             $this->resolved_symbols[$id] = $this->_bound[$id];
         }
 
@@ -524,6 +425,7 @@ class Imprint extends Render\Node\Keyed
     }
 
 
+    /** LIVE CODE **/
     public function print($pattern = null)
     {
         $tree = $this->pattern[$pattern];
@@ -533,20 +435,21 @@ class Imprint extends Render\Node\Keyed
 
 
         $NS = $this->getImprintNamespace();
-		$root = $this->exportNodeSymbol($tree);
+        $root = $this->exportNodeSymbol($tree);
 
-		$token_list = 
-			implode(									// Join the strings together
-				',' , 									// with a comma,
-				array_map( function ($token) {			// and alter each string,
-						return '\'' . $token . '\'';	// to be wrapped in single quotes,
-					},
-					array_keys(							// after fetching the names 
-						$this->found_tokens				// of all tokens found.
-					)
-				)
-			);
-		
+        $token_list =
+            implode(                                    // Join the strings together
+                ',',                                     // with a comma,
+                array_map(
+                    function ($token) {            // and alter each string,
+                        return '\'' . $token . '\'';    // to be wrapped in single quotes,
+                    },
+                    array_keys(                            // after fetching the names 
+                        $this->found_tokens                // of all tokens found.
+                    )
+                )
+            );
+
 
         $file = <<<ImprintFile
 		<?php
@@ -594,11 +497,11 @@ class Imprint extends Render\Node\Keyed
 
         $parts = array_merge($parts, explode(ds, $path));
 
-		$ns = join('\\', $parts);
+        $ns = join('\\', $parts);
 
-		// ensure the namespace is using \ instead of / since path separator varies
+        // ensure the namespace is using \ instead of / since path separator varies
 
-		return str_replace('/', '\\', $ns);
+        return str_replace('/', '\\', $ns);
         return $ns;
     }
 
@@ -678,10 +581,13 @@ class Imprint extends Render\Node\Keyed
      */
     public function recurse(simpleXMLElement $element, string $render_type = Node::class): Render\Node | Stream
     {
+        $render_type = $this->getRenderTypeFromElement(element: $element);
+
         $stringified = $element->asXML();
         $result = new Render\Node();
 
         $has_token = str_contains($stringified, '[@');
+        $has_work = str_contains($stringified, '<node');
         $has_work = str_contains($stringified, '<Work:');
         $has_render = str_contains($stringified, '<Render:');
         $has_imprint = str_contains($stringified, '<Imprint:');
@@ -693,20 +599,42 @@ class Imprint extends Render\Node\Keyed
         $has_ensemble = str_contains($stringified, '<Ensemble:');
         $has_orchestra = str_contains($stringified, '<Orchestra:');
 
-        $has_imprint_concept = 
-        $has_token | $has_render | $has_imprint | 
-        $has_resource | $has_component | $has_composition |
-        $has_service_ns | $has_instrument | $has_ensemble | $has_orchestra;
+        $has_imprint_concept =
+            $has_token | $has_render | $has_imprint |
+            $has_resource | $has_component | $has_composition |
+            $has_service_ns | $has_instrument | $has_ensemble | $has_orchestra;
 
-        if(!$has_imprint_concept){
-        return new Node( $stringified );
-        }
-        else{ 
-            foreach($element->children() as $child){
+        if (!$has_imprint_concept) {
+            return new Node($stringified);
+        } else {
+            foreach ($element->children() as $child) {
                 $result->nodes[] = $this->recurse($child, $render_type);
             }
 
-            return new $render_type($result);
+            $args = self::extractAttributes($element);
+
+            // /** THIS IS WHERE TO PICK UP FROM **/
+            // looking for attr="[@ name @]"
+            foreach($args as $key => $value){ if( $this->hasToken($value) ){
+                    $found_token = $this->getToken($value);
+
+                    // Does this work only for attr="[@ name @]" or attr="[@    name    @]" 
+                    // but not attr="[@ fname @][@ lname @]"
+
+                    if( strlen($found_token) == ( strlen(trim($value, self::TOKEN_SYMBOL_END.self::TOKEN_SYMBOL_START."\t\r\n\0"))) ){
+                        echo 'I even here with ' . $found_token . PHP_EOL;
+                        $args[$key] = new Render\Token(name: $found_token );
+                    }
+                }
+            }
+
+            $ret = new $render_type(...$args);
+            if(property_exists($render_type, 'content')){
+                $ret->content = $result;
+            }
+            else $ret[]=$result;
+
+            return new $ret;
         }
     }
 
@@ -717,69 +645,69 @@ class Imprint extends Render\Node\Keyed
      * @param bool $force Whether to force the input to be handled like it has a token
      * @return mixed Returns the original input if it is not a string or a stringable object and $force is not set, or a new node containing the token if the input contains a token name
      */
-    function stringableToToken(mixed $string, $force = false): mixed
-    {
-        // Check if the input is already a stringable object or not a string, and return it if it is and $force is not set
-        $isStringableObject = (is_object($string) && method_exists($string, '__toString')) || is_a($string, Node::class);
-        $isNotString = !is_string($string);
+    // function stringableToToken(mixed $string, $force = false): mixed
+    // {
+    //     // Check if the input is already a stringable object or not a string, and return it if it is and $force is not set
+    //     $isStringableObject = (is_object($string) && method_exists($string, '__toString')) || is_a($string, Node::class);
+    //     $isNotString = !is_string($string);
 
-        if (($isStringableObject || $isNotString) && !$force) {
-            return $string;
-        }
+    //     if (($isStringableObject || $isNotString) && !$force) {
+    //         return $string;
+    //     }
 
-        // Convert the input to a string
-        $original = $string;
-        $string = (string) $string;
+    //     // Convert the input to a string
+    //     $original = $string;
+    //     $string = (string) $string;
 
-        // Find the start and end of the token name in the string
-        $start = strpos($string, self::TOKEN_SYMBOL_START) + strlen(self::TOKEN_SYMBOL_START);
-        $end = strpos($string, self::TOKEN_SYMBOL_END);
+    //     // Find the start and end of the token name in the string
+    //     $start = strpos($string, self::TOKEN_SYMBOL_START) + strlen(self::TOKEN_SYMBOL_START);
+    //     $end = strpos($string, self::TOKEN_SYMBOL_END);
 
-        // If the token name is not found, return the original input
-        if ($end === false || $start === false) {
-            return $original;
-        }
+    //     // If the token name is not found, return the original input
+    //     if ($end === false || $start === false) {
+    //         return $original;
+    //     }
 
-        // Create a new token object with the name found in the string
-        $token = new Token(
-            name: trim(
-                substr($string, $start, $end - $start)
-            )
-        );
-        // Add the token to the tokens array
-        $this->tokens[$token->name] = $token;
+    //     // Create a new token object with the name found in the string
+    //     $token = new Token(
+    //         name: trim(
+    //             substr($string, $start, $end - $start)
+    //         )
+    //     );
+    //     // Add the token to the tokens array
+    //     $this->tokens[$token->name] = $token;
 
-        // Create new nodes for the content before and after the token name in the string
-        $preToken = new Node(
-            content: substr($string, 0, $start - strlen(self::TOKEN_SYMBOL_START))
-        );
+    //     // Create new nodes for the content before and after the token name in the string
+    //     $preToken = new Node(
+    //         content: substr($string, 0, $start - strlen(self::TOKEN_SYMBOL_START))
+    //     );
 
-        $postToken = new Node(
-            content: substr($string,  $end + strlen(self::TOKEN_SYMBOL_END))
-        );
+    //     $postToken = new Node(
+    //         content: substr($string,  $end + strlen(self::TOKEN_SYMBOL_END))
+    //     );
 
 
-        #if pretoken and posttoken are empty, return only the token
-        if (empty($preToken->content) && empty($postToken->content)) {
-            return $token;
-        }
+    //     #if pretoken and posttoken are empty, return only the token
+    //     if (empty($preToken->content) && empty($postToken->content)) {
+    //         return $token;
+    //     }
 
-        // Create a new node to hold the preToken, token, and postToken nodes
-        $node = new Render\Node();
+    //     // Create a new node to hold the preToken, token, and postToken nodes
+    //     $node = new Render\Node();
 
-        if (!empty($preToken->content)) {
-            $node[] = $preToken;
-        }
+    //     if (!empty($preToken->content)) {
+    //         $node[] = $preToken;
+    //     }
 
-        $node[] = $token;
+    //     $node[] = $token;
 
-        if (!empty($postToken->content)) {
-            $node[] = $postToken;
-        }
+    //     if (!empty($postToken->content)) {
+    //         $node[] = $postToken;
+    //     }
 
-        // Return the new node
-        return $node;
-    }
+    //     // Return the new node
+    //     return $node;
+    // }
 
     /**
      * extracts attributes from a simpleXMLElement in to keyed array
@@ -805,7 +733,7 @@ class Imprint extends Render\Node\Keyed
      */
     public function getRenderTypeFromElement(SimpleXMLElement $element, string $render_type = Node::class): string
     {
-        if ($element->getName() == 'Pattern') {
+        if ($element->getName() === 'Pattern') {
             $render_type = (string) $element->attributes()->type;
         }
         // e.g. <node render:type="ifTrue" ></node>
@@ -849,13 +777,13 @@ class Imprint extends Render\Node\Keyed
         }
 
         try {
-			echo 'Minting pattern from: ' . $this->imprint_dir . $this->imprint . '...' . PHP_EOL;
+            echo 'Minting pattern from: ' . $this->imprint_dir . $this->imprint . '...' . PHP_EOL;
             // Load the XML file, use html_entity_decode to prevent SimpleXML from converting HTML entities to their actual characters
-			
-			$file = file_get_contents($this->imprint_dir . $this->imprint);
-			$file = html_entity_decode($file);
-			$tree = simplexml_load_string($file);
-			
+
+            $file = file_get_contents($this->imprint_dir . $this->imprint);
+            $file = html_entity_decode($file);
+            $tree = simplexml_load_string($file);
+
             // $tree = simplexml_load_file($this->imprint_dir . $this->imprint);
             $imprint = $tree->xpath('//Imprint:Pattern');
 
