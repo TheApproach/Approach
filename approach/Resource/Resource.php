@@ -49,6 +49,8 @@ const mode = 5;
 
 class Resource extends RenderNode implements Stream
 {
+	public static function GetProfile(){	return [];	}
+	public static function GetSource(){ return 'Resource'; }
 	// TODO: Add a Resource\context class to hold the Aspects
 	// Make it extend Resource, so that a context can hold bare resources but still reconfigure results
 	// Then work $__approach_resource_context out of the Resource class
@@ -99,7 +101,7 @@ class Resource extends RenderNode implements Stream
 		$this->__approach_resource_context[filter] =
 			new Aspect();
 
-		$this->parseUri($where);
+		// $this->parseUri($where);
 	}
 
 	public function define()
@@ -115,8 +117,8 @@ class Resource extends RenderNode implements Stream
 		// $this->aspects[aspects::container]->nodes[aspect
 	}
 
-	public function find(
-		string $where = "/",
+	public static function find(
+		string $where = '/',
 		?Aspect $sort = null,
 		?Aspect $weigh = null,
 		?Aspect $pick = null,
@@ -126,365 +128,30 @@ class Resource extends RenderNode implements Stream
 		?callable $filter = null,
 		?string $as = null
 	): Resource|Stringable|string|nullstate {
-		// Initialize values here so things don't persist between consecutive calls & failures
-		$this->tmp_parsed_url = [];
-		$tmp_parsed_url = [];
+		$r = null;
+		$res = Resource::parseUri($where);
 
-		// check protocol exists, and parse it
-		if (!str_contains($where, '://')) {
-			return nullstate::ambiguous;
+		$suffix = str_replace('/','\\',$res['url']);
+		$new_resource = \Approach\Scope::$Active->project . '\\Resource'. $suffix;
+
+		if(class_exists( $new_resource )){
+			$r = new $$new_resource;
+		} 
+		else {
+			$r = new static;
 		}
 
-		list($tmp_parsed_url['protocol'], $where) = explode('://', $where, 2);
+		$r->__approach_resource_context = $res['context'];
+        print_r($r->__approach_resource_context);
 
-		if (
-			$tmp_parsed_url['protocol'] === '' ||
-			empty($where[0]) ||
-			$where[0] === '/'
-		) {
-			return nullstate::ambiguous;
-		}
-
-		if (str_contains($where, '?')) {
-			list($where, $tmp_parsed_url['query_string']) = explode(
-				'?',
-				$where,
-				2
-			);
-
-			// parse_str stores the result in the second argument, and urldecodes automatically
-			// RFC 3986 section 3.4 elaborates little on query strings, but I will assume
-			// that this function follows the spec
-			parse_str(
-				$tmp_parsed_url['query_string'],
-				$tmp_parsed_url['query_string']
-			);
-		} else {
-			$tmp_parsed_url['query_string'] = [];
-		}
-
-		if (!str_contains($where, '/')) {
-			$tmp_parsed_url['host'] = $where;
-			$tmp_parsed_url['parts'] = [];
-		} else {
-			list($tmp_parsed_url['host'], $where) = explode('/', $where, 2);
-			$tmp_parsed_url['parts'] = array_values(
-				array_filter(explode('/', $where))
-			);
-		}
-
-		foreach ($tmp_parsed_url['parts'] as $key => $part) {
-			$parsed_part = [
-				'type' => null,
-				'criterias' => [],
-				'parsed_csv' => null,
-				'sub_delim_part' => null,
-			];
-
-			// Get sub delim if present
-			if (str_contains($part, ';')) {
-				list($part, $parsed_part['sub_delim_part']) = explode(
-					';',
-					$part,
-					2
-				);
-			}
-
-			// if there is (...), parse the CSV input
-			$first_opening_parenthesis = strpos($part, '(');
-			if ($first_opening_parenthesis !== false) {
-				$length = strlen($part);
-
-				if (
-					$length < 2 ||
-					empty($part[$length - 1]) ||
-					$part[$length - 1] !== ")"
-				) {
-					return nullstate::ambiguous;
-				}
-
-				$parsed_part["parsed_csv"] = str_getcsv(
-					substr(
-						$part,
-						$first_opening_parenthesis + 1,
-						$length - $first_opening_parenthesis - 1
-					)
-				);
-				$part = substr($part, 0, $first_opening_parenthesis);
-
-				if (
-					$parsed_part["parsed_csv"] === [] ||
-					$parsed_part["parsed_csv"] === [null]
-				) {
-					return nullstate::ambiguous;
-				}
-			}
-
-			// If there is no [, there's nothing else to do
-			if (strpos($part, '[') === false) {
-				if ($parsed_part['parsed_csv'] !== null) {
-					return nullstate::ambiguous;
-				}
-
-				$parsed_part['type'] = $part;
-				$tmp_parsed_url['parts'][$key] = $parsed_part;
-				continue;
-			}
-
-			// Otherwise, parse the [...] blocks
-			list($parsed_part['type'], $part) = explode('[', $part, 2);
-
-			// Since we removed the opening [, also remove the closing ]
-			if (substr($part, -1) !== ']') {
-				return nullstate::ambiguous;
-			}
-
-			$part = substr($part, 0, -1);
-
-			for (
-				$i = 0, $part_max_length = strlen($part);
-				$part !== '';
-				$part = substr($part, $i),
-				$part_max_length = strlen($part),
-				$i = 0
-			) {
-				// First, check if we're at the end of the criteria block
-				if ($part[0] === ']') {
-					if ($part_max_length === 1 || $part[1] !== '[') {
-						return nullstate::ambiguous;
-					}
-
-					$parsed_part['criterias'][] = [
-						'type' => 'next_block',
-						'token' => '][',
-					];
-
-					$i += 2;
-
-					continue;
-				}
-
-				// Second, get through any white space
-				for (;
-					$i < $part_max_length &&
-						match ($part[$i]) {
-							' ', '\r', '\n' => true,
-							default => false,
-						};
-					$i++
-				);
-
-				if ($i !== 0) {
-					$parsed_part['criterias'][] = [
-						'type' => 'whitespace',
-						'token' => substr($part, 0, $i),
-					];
-
-					continue;
-				}
-
-				// Next, try matching a string
-				if ($part[$i] === "'" || $part[$i] === "'") {
-					$start_i = $i;
-
-					for (
-						$i++;
-						$i < $part_max_length && $part[$i] !== $part[$start_i];
-						$i++
-					);
-
-					$i++;
-
-					$parsed_part['criterias'][] = [
-						'type' => 'string',
-						'token' => substr($part, $start_i, $i),
-					];
-
-					continue;
-				}
-
-				// Next, try to match a number
-				for (;
-					$i < $part_max_length &&
-						$part[$i] >= '0' &&
-						$part[$i] <= '9';
-					$i++
-				);
-
-				if (
-					$i > 0 &&
-					($i === $part_max_length ||
-						$part[$i] === ']' ||
-						$part[$i] === ',')
-				) {
-					$parsed_part['criterias'][] = [
-						'type' => 'int',
-						'token' => intval(substr($part, 0, $i)),
-					];
-
-					continue;
-				}
-
-				// If the number ends with a - and $i is 2, maybe it's a date?
-				if (
-					$i === 2 &&
-					$i + 10 <= $part_max_length &&
-					$part[2] === '-' &&
-					($part[3] >= '0' && $part[3] <= '9') &&
-					($part[4] >= '0' && $part[4] <= '9') &&
-					$part[5] === '-' &&
-					($part[6] >= '0' && $part[6] <= '9') &&
-					($part[7] >= '0' && $part[7] <= '9') &&
-					($part[8] >= '0' && $part[8] <= '9') &&
-					($part[9] >= '0' && $part[9] <= '9')
-				) {
-					$parsed_part['criterias'][] = [
-						'type' => 'date',
-						'token' => substr($part, 0, 10),
-					];
-
-					$i = 10;
-					continue;
-				}
-
-				// If the number ends with a dot, maybe it's a brackets$brackets?
-				if (
-					$i > 0 &&
-					$i !== $part_max_length &&
-					$part[$i] === '.' &&
-					$i + 2 <= $part_max_length &&
-					$part[$i + 1] === '.'
-				) {
-					$i += 2;
-
-					for (;
-						$i < $part_max_length &&
-							$part[$i] >= '0' &&
-							$part[$i] <= '9';
-						$i++
-					);
-
-					$parsed_part['criterias'][] = [
-						'type' => 'brackets$brackets',
-						'token' => substr($part, 0, $i),
-					];
-
-					continue;
-				}
-
-				// If the number doesn't end with a ], assume it's part of an identifier?
-				for (;
-					$i < $part_max_length &&
-						(($part[$i] >= '0' && $part[$i] <= '9') ||
-							($part[$i] >= 'a' && $part[$i] <= 'z') ||
-							($part[$i] >= 'A' && $part[$i] <= 'Z') ||
-							$part[$i] === '_' ||
-							$part[$i] === '-' ||
-							$part[$i] === '.');
-					$i++
-				);
-
-				if ($i !== 0) {
-					$parsed_part['criterias'][] = [
-						'type' => 'identifier',
-						'token' => substr($part, 0, $i),
-					];
-
-					continue;
-				}
-
-				// match <= and >= and == and !=
-				if ($part_max_length >= 2 && $part[1] === '=') {
-					switch ($part[0]) {
-						case '>':
-							$parsed_part['criterias'][] = [
-								'type' => 'greater_equal_to',
-								'token' => '>=',
-							];
-
-							$i += 2;
-							continue 2;
-
-						case '<':
-							$parsed_part['criterias'][] = [
-								'type' => 'less_equal_to',
-								'token' => '<=',
-							];
-
-							$i += 2;
-							continue 2;
-
-						case '=':
-							$parsed_part['criterias'][] = [
-								'type' => 'equal_to',
-								'token' => '==',
-							];
-
-							$i += 2;
-							continue 2;
-
-						case '!':
-							$parsed_part['criterias'][] = [
-								'type' => 'not_equal_to',
-								'token' => '!=',
-							];
-
-							$i += 2;
-							continue 2;
-					}
-				}
-
-				// Match , and : and < and >
-				switch ($part[0]) {
-					case ',':
-						$parsed_part['criterias'][] = [
-							'type' => 'comma',
-							'token' => ',',
-						];
-
-						$i++;
-						continue 2;
-
-					case ':':
-						$parsed_part['criterias'][] = [
-							'type' => 'colon',
-							'token' => ':',
-						];
-
-						$i++;
-						continue 2;
-
-					case '>':
-						$parsed_part['criterias'][] = [
-							'type' => 'greater_than',
-							'token' => '>',
-						];
-
-						$i++;
-						continue 2;
-
-					case '<':
-						$parsed_part['criterias'][] = [
-							'type' => 'less_than',
-							'token' => '<',
-						];
-
-						$i++;
-						continue 2;
-				}
-
-				// Finally, if it's matched noething so far... It's probably a parsing error
-				return nullstate::ambiguous;
-			}
-
-			$tmp_parsed_url['parts'][$key] = $parsed_part;
-		}
-
-		$this->tmp_parsed_url = $tmp_parsed_url;
-
-		return $this;
+		return $r;
 	}
 
+
+	// gen-delims  = :   /   ?   #   [   ]   @
+
+	// sub-delims  = !   $   &   ' " (   ) *  +  ,  ;  =	
+	  
 	public function sort(\Stringable|string|Aspect $by, bool $ascending = true)
 	{
 		if (!($by instanceof Aspect)) {
@@ -531,33 +198,6 @@ class Resource extends RenderNode implements Stream
 		return $service->payload;
 	}
 
-	// Mimic preg_match('/^(\d+\.\.)(\d+)$/', $value, $matches) with strpos()
-
-	/**
-	 * Should always return a Service payload
-	 *
-	 * @param \Approach\Render\KeyedNode $service Any compatible payload container, ideally an object of type Service
-	 * @param \Approach\Render\Node $source Any object, string, id, etc.. Representing the sort of formatted resource to be loaded
-	 * @return array The payload of the service
-	 * @access public
-	 */
-	public function load($service, RenderNode $source)
-	{
-		return $service->payload;
-	}
-
-	/**
-	 * Should ideally return type-safe true or false
-	 *
-	 * @param \Approach\Render\KeyedNode $exchange Any compatible payload container, ideally and object of type ExchangeTransport
-	 * @param \Approach\Render\Node $type
-	 * @access public
-	 */
-	public function save($exchange, RenderNode $type)
-	{
-		return false;
-	}
-
 	/**
 	 * Mint a resource class file
 	 *
@@ -590,7 +230,7 @@ class Resource extends RenderNode implements Stream
 				$namespace ?? \Approach\Scope::$Active->project . '\Resource';
 			$uses = $uses ?? [static::class];
 
-			$content = '<?php ' . PHP_EOL . PHP_EOL;
+			$content = "<?php " . PHP_EOL . PHP_EOL;
 
 			// Write the namespace
 			$content .= 'namespace ' . $namespace . ';' . PHP_EOL . PHP_EOL;
@@ -598,6 +238,7 @@ class Resource extends RenderNode implements Stream
 			foreach ($uses as $use) {
 				$content .= 'use ' . $use . ';' . PHP_EOL;
 			}
+			$content .= 'use ' . $namespace . '\\' . $class . '\\user_trait as aspects;' . PHP_EOL . PHP_EOL;
 			$profilePath = $namespace;
 			// make it into \Resource\Aspect\MariaDB
 			$profilePath = str_replace(
@@ -608,19 +249,23 @@ class Resource extends RenderNode implements Stream
 
 			// Write the class
 			$content .=
-				'class ' . $class . ' extends ' . $extends . '{' . PHP_EOL;
+				'class ' . $class . ' extends ' . $extends . '{' . PHP_EOL . PHP_EOL;
+			
+			$content .= "\t" .	'/** Link minted Resource to its Aspects Profile */' . PHP_EOL;
+			$content .= "\t" . 'public static function GetProfile()		{ 	return aspects::$profile;	}' . PHP_EOL;
+			$content .= "\t" . 'public static function GetSourceName()	{	return aspects::$source;	}' . PHP_EOL . PHP_EOL;
+
 			$content .=
-				'\t' .
-				'// Change the user_trait to add functionality to this generated class' .
+				"\t// Change the user_trait to add functionality to this generated class" .
 				PHP_EOL;
 			foreach ($constants as $constant) {
-				$content .= '\t' . 'const ' . $constant . ';' . PHP_EOL;
+				$content .= "\t" . 'const ' . $constant . ';' . PHP_EOL;
 			}
 			foreach ($properties as $property) {
-				$content .= '\t' . 'public ' . $property . ';' . PHP_EOL;
+				$content .= "\t" . 'public ' . $property . ';' . PHP_EOL;
 			}
 			foreach ($methods as $method) {
-				$content .= '\t' . $method . PHP_EOL;
+				$content .= "\t" . $method . PHP_EOL;
 			}
 			$content .= '}' . PHP_EOL;
 
@@ -939,8 +584,8 @@ trait user_trait
     const _HAS_ = 9;
 
     const OPEN_DIRECTIVE = 10;
-		const CLOSE_DIRECTIVE = 11;
-		const OPEN_GROUP = 12;
+	const CLOSE_DIRECTIVE = 11;
+	const OPEN_GROUP = 12;
     const CLOSE_GROUP = 13;
     const OPEN_INDEX = 14;
     const CLOSE_INDEX = 15;
@@ -979,7 +624,7 @@ trait user_trait
         self::DELIMITER => ',',
     ];
 
-    function getDelimiterPositionEfficient($haystack)
+    static function getDelimiterPositionEfficient($haystack)
     {
         $length = strlen($haystack);
         $delimiters = [
@@ -1022,7 +667,7 @@ trait user_trait
         return $lowestIndex === INF ? -1 : $lowestIndex;
     }
 
-    function extractRanges($string): array|bool
+    static function extractRanges($string): array|bool
     {
         $result = array();
         $start = 0;
@@ -1043,7 +688,7 @@ trait user_trait
         return $result;
     }
 
-    function parseRange($range): array|bool
+    static function parseRange($range): array|bool
     {
         $range = trim($range);
 
@@ -1056,14 +701,14 @@ trait user_trait
 
         foreach ($parts as $part) {
             $part = trim($part);
-            $parsedPart = $this->parsePart($part);
+            $parsedPart = self::parsePart($part);
             $result[] = $parsedPart;
         }
 
         return $result;
     }
 
-	function parsePartHead($head): array|string{
+	static function parsePartHead($head): array|string{
 		// parse ! or ^ in ! name 
 		// check if self::$Operations[self::WANT_PREFIX] or self::$Operations[self::REJECT_PREFIX] is present
 		$logicalOps = [self::$Operations[self::WANT_PREFIX], self::$Operations[self::REJECT_PREFIX]];
@@ -1077,7 +722,7 @@ trait user_trait
 		return $head;
 	}
 
-	function parsePartTail($tail): array|string{
+	static function parsePartTail($tail): array|string{
 		// check if self::$Operations[self::Need] is present
 		// if it is, it would be of form value $ 5
 		// parse the $ and 5
@@ -1092,7 +737,7 @@ trait user_trait
 		return $tail;
 	}
 
-    function parsePart($part): array
+    static function parsePart($part): array
     {
         // Check for AND, OR, HAS
         $logicalOps = [self::$Operations[self::_AND_], self::$Operations[self::_OR_], self::$Operations[self::_HAS_]];
@@ -1107,7 +752,7 @@ trait user_trait
                     $right = self::parseRange($right);
                 }
 
-                $this->__approach_resource_context[sift][] = [$left, $op, $right];
+//                $context[sift][] = [$left, $op, $right];
                 return [$left, $op, $right];
             }
         }
@@ -1115,9 +760,9 @@ trait user_trait
         foreach (self::$Operations as $opValue) {
             if (($pos = strpos($part, $opValue)) !== false) {
                 $field = trim(substr($part, 0, $pos));
-				$field = $this->parsePartHead($field);
+				$field = self::parsePartHead($field);
                 $value = trim(substr($part, $pos + strlen($opValue)));
-				$value = $this->parsePartTail($value);
+				$value = self::parsePartTail($value);
                 if (!empty($field) && $value !== '') {
 					if (is_string($value)){
 						$value = substr($value, 1, -1);
@@ -1145,23 +790,21 @@ trait user_trait
 					}
 
 					if($weights){
-						$this->__approach_resource_context[sift][] = [$field, $opValue, $value, 'weights' => $weights];
+						$context[sift][] = [$field, $opValue, $value, 'weights' => $weights];
 						return [$field, $opValue, $value, 'weights' => $weights];
 					}
 
-                    $this->__approach_resource_context[sift][] = [$field, $opValue, $value];
+//                    $context[sift][] = [$field, $opValue, $value];
                     return [$field, $opValue, $value];
                 }
             }
         }
 
-//        $this->__approach_resource_context[pick]->nodes = array_merge($this->__approach_resource_context[pick]->nodes, [$part]);
-        //id
-        $this->__approach_resource_context[pick]->nodes[] = new Aspect(type: Aspect::container, content: $part);
+//        $context[pick]->nodes[] = new Aspect(type: Aspect::container, content: $part);
         return [$part];
     }
 
-    private function splitString($string): array
+    private static function splitString($string): array
     {
         $result = [];
         $start = 0;
@@ -1179,7 +822,7 @@ trait user_trait
         return $result;
     }
 
-    public function parsePath(string $path): array|string
+    public static function parsePath(string $path): array|string
     {
         $first_bracket = strpos($path, self::$Operations[self::OPEN_INDEX]);
 
@@ -1200,7 +843,7 @@ trait user_trait
         return $res;
     }
 
-    function isRange($path): bool
+    static function isRange($path): bool
     {
         // check if any one operator is present
         $operators = [
@@ -1224,23 +867,29 @@ trait user_trait
         return false;
     }
 
+	public static function tillFirstDelim($path): string{
+		$first_delim = self::getDelimiterPositionEfficient($path);
+		return $first_delim === false ? $path : substr($path, 0, $first_delim);
+	} 
+
     /**
-     * Parse a URI into its components
+     * Parse an URI into its components
      *
      * @return array An array out of the components of the URL
      * @access public
      * @static
      */
-    public function parseUri($url): array
+    public static function parseUri($url): array
     {
         $primary = parse_url($url);
         $res = [];
+		$context = [];
+        $context[pick] = new Aspect();
+        $context[sift] = new Aspect();
+
+		$url = '';
 
         $pathCombined = $primary['path'];
-        // only till a delimiter
-        $first_delim = self::getDelimiterPositionEfficient($pathCombined);
-        $first_delim = false;
-        $pathCombined = $first_delim === false ? $pathCombined : substr($pathCombined, 0, $first_delim);
 
 		// function parsing 
         $last_bracket = strrpos($pathCombined, self::$Operations[self::CLOSE_INDEX]);
@@ -1269,9 +918,21 @@ trait user_trait
         $res['paths'] = [];
 
         foreach ($paths as $path) {
-            $res['paths'][] = self::parsePath($path);
+			$url .= '/' . self::tillFirstDelim($path);
+            $parsed = self::parsePath($path);
+            $res['paths'][] = $parsed;
+            if(is_array($parsed)){
+                foreach ($parsed['ranges'] as $p){
+                    foreach ($p as $range){
+                        if(count($range) == 1)
+                            $context[pick]->nodes[] = new Aspect(type: Aspect::container, content: $range[0]);
+                        else
+                            $context[sift][] = $range;
+                    }
+                }
+            }
         }
 
-        return $res;
+        return ['context' => $context, 'result' => $res, 'url' => $url];
     }
 }
