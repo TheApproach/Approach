@@ -10,7 +10,7 @@ trait sourceability
 {
 	abstract public static function aquire(Stringable|string|Node $where): ?Node;
 	abstract public static function pull(Stringable|string|Node $where): ?Node;
-	abstract public static function load(Stringable|string|Node $where): ?Node;
+	abstract public function load(): ?Node;
 
 	abstract public static function save(Resource $where): ?bool;
 	abstract public static function push(Resource $where): ?bool;

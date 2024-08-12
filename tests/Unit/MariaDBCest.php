@@ -9,7 +9,7 @@ use Approach\nullstate;
 use Approach\path;
 use Approach\Resource\Resource as Resource;
 use Approach\Scope;
-use Approach\Service;
+use MyProject\Resource\MariaDB\MyData;
 use Tests\Support\UnitTester;
 
 /**
@@ -139,13 +139,14 @@ class MariaDBCest
 
     public function checkServerLevelDiscovery(UnitTester $I)
     {
-//        $this->server->discover();
+        $this->server->discover();
 
         // Check if the server has a php file at Scope::GetPath( path::project ) /Resource/
     }
 
-    public function trySQL(UnitTester $I){
-        $url = "MariaDB://db.host/instances/myDatabase[cool, wow]/myTable[id, name]";
-        $resource = Resource::find($url);
+    public function trySQL(UnitTester $I)
+    {
+        // $r = Resource::find('MariaDB://MyData/test/names[id: 0..100][id]');
+        // $r->load();
     }
 }
