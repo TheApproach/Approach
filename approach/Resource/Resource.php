@@ -222,10 +222,18 @@ class Resource extends RenderNode implements Stream
 		// If the file does not exist, then build it
 		if (!file_exists($path) || $overwrite) {
 			// Grab the last part of the class name for the label
+            $db_type = '';
+            if(isset($constants['DBTYPE'])){
+                $db_type = $constants['DBTYPE'];
+            } else{
+                $temp = explode('\\', $extends);
+                $db_type = $temp[0];
+            }
+
 			$class = explode('\\', $class);
 			$class = $class[count($class) - 1];
 
-			$extends = $extends ?? '\Approach\Resource\MariaDB\Server';
+			$extends = $extends ?? '\Approach\Resource\\' . $db_type . '\Server';
 			$namespace =
 				$namespace ?? \Approach\Scope::$Active->project . '\Resource';
 			$uses = $uses ?? [static::class];
@@ -242,8 +250,8 @@ class Resource extends RenderNode implements Stream
 			$profilePath = $namespace;
 			// make it into \Resource\Aspect\MariaDB
 			$profilePath = str_replace(
-				'\\Resource\\MariaDB',
-				'\\Resource\\MariaDB\\Aspect',
+				'\\Resource\\' . $db_type,
+				'\\Resource\\' . $db_type . '\\Aspect',
 				$profilePath
 			);
 
@@ -271,8 +279,8 @@ class Resource extends RenderNode implements Stream
 
 			$file_dir = dirname($path);
 			$profileFileDir = str_replace(
-				'Resource/MariaDB',
-				'Resource/MariaDB/Aspect',
+				'Resource/' . $db_type,
+				'Resource/' . $db_type . '/Aspect',
 				$file_dir
 			);
 			$profileFileDir .= '/' . $class;
