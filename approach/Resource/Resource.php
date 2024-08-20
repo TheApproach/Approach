@@ -198,6 +198,13 @@ class Resource extends RenderNode implements Stream
 		return $service->payload;
 	}
 
+    public static function get_aspect_root($package){
+		$base_path = \Approach\Scope::$Active->path[path::project->value];
+        $base_path .= '/Resource/' . $package . '/Aspect';
+
+        return $base_path;
+    }
+
 	/**
 	 * Mint a resource class file
 	 *
@@ -222,18 +229,13 @@ class Resource extends RenderNode implements Stream
 		// If the file does not exist, then build it
 		if (!file_exists($path) || $overwrite) {
 			// Grab the last part of the class name for the label
-            $db_type = '';
-            if(isset($constants['DBTYPE'])){
-                $db_type = $constants['DBTYPE'];
-            } else{
-                $temp = explode('\\', $extends);
-                $db_type = $temp[0];
-            }
+            $temp = explode('\\', $extends);
+            $package = $temp[0];
 
 			$class = explode('\\', $class);
 			$class = $class[count($class) - 1];
 
-			$extends = $extends ?? '\Approach\Resource\\' . $db_type . '\Server';
+			$extends = $extends ?? '\Approach\Resource\\' . $package . '\Server';
 			$namespace =
 				$namespace ?? \Approach\Scope::$Active->project . '\Resource';
 			$uses = $uses ?? [static::class];
@@ -250,8 +252,8 @@ class Resource extends RenderNode implements Stream
 			$profilePath = $namespace;
 			// make it into \Resource\Aspect\MariaDB
 			$profilePath = str_replace(
-				'\\Resource\\' . $db_type,
-				'\\Resource\\' . $db_type . '\\Aspect',
+				'\\Resource\\' . $package,
+				'\\Resource\\' . $package . '\\Aspect',
 				$profilePath
 			);
 
@@ -279,8 +281,8 @@ class Resource extends RenderNode implements Stream
 
 			$file_dir = dirname($path);
 			$profileFileDir = str_replace(
-				'Resource/' . $db_type,
-				'Resource/' . $db_type . '/Aspect',
+				'Resource/' . $package,
+				'Resource/' . $package . '/Aspect',
 				$file_dir
 			);
 			$profileFileDir .= '/' . $class;
@@ -518,11 +520,7 @@ trait user_trait
 
 	public static function get_aspect_directory()
 	{
-		$class = explode(
-			// Split the string in an array
-			'\\', // Define the separator
-			static::class // Get the class name
-		);
+		$class = explode( '\\', static::class );
 		$class = end($class); // Get the last part of the class name
 
 		// Get the directory of the class
@@ -547,6 +545,32 @@ trait user_trait
 		}
 
 		return $aspect_directory;
+	}
+
+	public static function get_aspect_namespace()
+	{
+		$class_ns = explode( '\\', static::class );
+		$class = end($class_ns);
+
+		$aspect_ns = static::get_aspect_root( static::get_package_name() );
+		$aspect = explode('\\',$aspect_ns);
+
+		for($i=0, $L=count($class_ns); $i<$L; $i++){
+			$ns = $class_ns[$i];
+ 			$ans = array_shift($aspect);
+			if($ns == $ans){
+				continue;
+			}
+			else{
+				$aspect_ns .= implode('\\',array_slice($class_ns,$i));
+				break;
+			}
+		}
+		
+		/// MyProj/Resource/MyPack/found/found/item
+		/// MyProject/Resource/MyPack/Aspect/found/found/item
+		
+		return $aspect_ns.'\\'. $class ; // Add the class name as the last branch in the namespace
 	}
 
 	/**
@@ -889,6 +913,8 @@ trait user_trait
      */
     public static function parseUri($url): array
     {
+		echo static::get_aspect_namespace() . PHP_EOL;
+
         $primary = parse_url($url);
         $res = [];
 		$context = [];
@@ -943,4 +969,25 @@ trait user_trait
 
         return ['context' => $context, 'result' => $res, 'url' => $url];
     }
+
+	public static function get_package_name($package = 'Resource'){
+		$class_name = get_called_class(); // should be MariaDB/Table but is Resource/Resource ;/
+		var_export($class_name);
+		$class_parts = explode('\\',$class_name);
+
+		$resource_path = path::resource->get();
+		// var_export($resource_path);
+		$resource_parts = explode(DIRECTORY_SEPARATOR, $resource_path);
+		$resource_ns = end( $resource_parts  );
+		var_export($resource_ns);
+
+		for($i=0,$L=count($class_parts); $i < $L; $i++ )
+		{
+			$part = $class_parts[$i];
+			if($part === $resource_ns && $L < $i+1){
+				$package = $class_parts[$i+1];
+			}
+		}
+		return $package;
+	}
 }

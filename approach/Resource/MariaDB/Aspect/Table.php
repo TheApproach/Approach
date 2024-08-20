@@ -5,6 +5,9 @@ namespace Approach\Resource\MariaDB\Aspect;
 use \Approach\Resource\Aspect\discover;
 use \Approach\Resource\discoverability as resource_discoverability;
 use \Approach\nullstate;
+use Approach\path;
+use Approach\Resource\Resource;
+use Approach\Scope;
 
 // trait table_discoverability
 // {
@@ -272,9 +275,67 @@ class Table extends discover
 		// }
 
 		return $references;
-	}
+    }
 
+    public static function define_qualities($caller): false|array
+    {
+		$table = $caller->name;
+		echo 'Defining qualities for MariaDB://' . $caller::SERVER_NAME . '/' . $caller::DATABASE_NAME . '/' . $table . PHP_EOL;
+		$connection = $caller->database->server->connection;
 
+		// Make sure we're using the right database
+		$sql = 'USE ' . $caller::DATABASE_NAME . ';';
+		$result = $connection->query($sql);
+
+		// Check for errors
+		if (!$result) {
+			return false;
+		}
+		// exit();
+		// $connection = $caller->database->connection;
+
+        $symbols = [
+            'DATABASE_CLASS',
+            'SERVER_CLASS',
+            'CONNECTOR_CLASS',
+            'RESOURCE_CLASS',
+            'DATABASE_NAME',
+            'SERVER_NAME',
+            'RESOURCE_PROTO',
+            'NAME',
+            'COMMENT',
+            'ENGINE',
+            'ROW_FORMAT',
+            'TABLE_COLLATION',
+            'CREATE_OPTIONS',
+            'TABLE_ROWS',
+            'AVG_ROW_LENGTH',
+            'DATA_LENGTH',
+            'MAX_DATA_LENGTH',
+            'INDEX_LENGTH',
+            'DATA_FREE',
+            'AUTO_INCREMENT',
+            'CREATE_TIME',
+            'UPDATE_TIME',
+            'CHECK_TIME',
+            'CHECKSUM',
+            'TABLE_COMMENT',
+        ];
+
+		$data =[];
+        foreach($symbols as $index => $value){
+            $data['label'][$index] = $symbols[$index];
+            $data['description'][$index] = 'NULL';
+            $data['keywords'][$index] = 'NULL';
+            $data['children'][$index] = 'NULL';
+            $data['related'][$index] = 'NULL';
+            $data['type'][$index] = 'NULL';
+        }
+
+        $data =  array_merge($data, self::equipState($symbols, $caller));
+
+		return ['symbols' => $symbols, 'data' => $data ];
+    }
 
 	public static function define_fields($caller): false|array
     {
@@ -295,18 +356,22 @@ class Table extends discover
 		// exit();
 		// $connection = $caller->database->connection;
 
-		$columns = static::get_field_list($table, $connection);
+		$symbols = static::get_field_list($table, $connection);
 		$fields = static::get_table_definition($table, $connection);
 		$accessors = static::get_accessors($table, $connection);
-		$keyProperties = static::get_reference_list($table, $columns, $connection);
+		$keyProperties = static::get_reference_list($table, $symbols, $connection);
 
-		$metadata = array();
-		$dObj = new \stdClass();
-		$dObj->custom_aspects = [];
-		$dObj = static::equipFieldPropertyMetadata($dObj, $columns, $fields, $accessors, $keyProperties);
-		$dObj = static::equipReferenceToAccessors($dObj, $columns, $accessors);
+		$data = [];
+		$data = array_merge($data, static::equipFieldPropertyMetadata($symbols, $fields, $accessors, $keyProperties));
+		$data = array_merge($data, static::equipReferenceToAccessors($symbols, $accessors));
 
-		$dObj->location = $caller::class;
+		// wait so won't it be just Aspect/place/place
+		// we also need the location === namespace not file name. hmm
+		$data['location'] = $caller::get_aspect_directory();
+		// MyProject/Resource/$package/		      /place/place/location.php discovered resource class (both)
+		// MyProject/Resource/$package/		      /place/place/location/$aspect.php old
+		// MyProject/Resource/$package/		Aspect/place/place/location/$aspect.php new
+		
 		$classfile = static::get_table_classfile($caller);
 		// remove ".php" from classfile name, add /field.php
 
@@ -329,6 +394,7 @@ class Table extends discover
 		$aspect_path = $aspect_root . '/Aspect' . $aspect_branch;
 		$aspect_path = substr($aspect_path, 0, -4);
 
+
         // remove p: from $caller::SERVER_NAME
         $servername = $caller::SERVER_NAME;
         $servername = substr($servername, 2);
@@ -339,7 +405,7 @@ class Table extends discover
         $aspect_ns .= 'Aspect' . $aspect_branch;
         $aspect_ns = substr($aspect_ns, 0, -4);
 
-        $dObj->location = $aspect_ns;
+        $data['location'] = $aspect_ns;
 
         // echo $aspect_ns . PHP_EOL;
         // echo $aspect_path . PHP_EOL;
@@ -350,7 +416,7 @@ class Table extends discover
 		// Make sure the directory exists and is RW but NOT executable, for user and group only
 		if (!is_dir($aspect_path)) {
 			mkdir($aspect_path, 0777, true);
-		} else {	// Directory already exists, make sure it's writable
+		} else {	// Directory already for thesexists, make sure it's writable
 			chmod($aspect_path, 0777);
 			// recursive chmod
 			$objects = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($aspect_path), \RecursiveIteratorIterator::SELF_FIRST);
@@ -361,8 +427,8 @@ class Table extends discover
 
 		// exit($aspect_branch . ' | ' . $aspect_path . '|' . $aspect_path);
 
-		$dObj->filename = $aspect_path . '/field.php';
-		static::MintAspect($dObj, $columns, 'field'); //,  $classpath);
+		// $data->filename = $aspect_path . '/field.php';
+		// static::MintAspect($data, $symbols, 'field'); //,  $classpath);
 
 //        echo 'Defining: ';
 //        foreach($columns as $col){
@@ -371,41 +437,97 @@ class Table extends discover
 //
 //        echo PHP_EOL;
 
-		return ['columns' => $columns, 'data' => $dObj, 'path' => $aspect_path];
+		return ['symbols' => $symbols, 'data' => $data,  'path' => $classfile];
 	}
 
-    public static function define_profile($caller, $fields_info): void
-    {
-        $table = $caller->name;
-        echo 'Defining profile for MariaDB://' . $caller::SERVER_NAME . '/' . $caller::DATABASE_NAME . '/' . $table . PHP_EOL;
+    public static function define_profile($caller, $info): void
+    {			
+		$table = $caller->name;
+		echo 'Defining profile for MariaDB://' . $caller::SERVER_NAME . '/' . $caller::DATABASE_NAME . '/' . $table . PHP_EOL;
+		echo 'Info: ' . var_export($info) . PHP_EOL;
 
-        $aspect_path = $fields_info['path'];
-        $dObj = new \stdClass();
-        $dObj->filename = $aspect_path . '/profile.php';
-        $dObj->location = $fields_info['data']->location;
+		$aspect_path = $info['path'];
+		$dObj = new \stdClass();
+		// location is actually the namespace all the aspects should mint to 
+		$dObj->location = $info['field']['data']->location;
+		$dObj->filename = $aspect_path . '/profile.php';
 		$dObj->source_name = $table;
-        static::MintProfile($dObj, $fields_info['columns'], $table); //,  $classpath);
+
+		static::MintProfile($dObj, $info, $table); //,  $classpath);
     }
 
+    public static function equipState($columns, $caller){
+        $resource_ns = Scope::$Active->project . '\Resource\MariaDB';
 
+        $safe_database_name = '';  // We will use this to hold a safe version of $this->label
 
-	public static function equipReferenceToAccessors($dObj, $columns, $accessors)
+        // Check if $this->label starts with 'p:' (persistent)
+        // If so, then remove it and set that result to $safe_database_name
+
+        // Remove characters that are invalid for class names for this->label
+        // $safe_database_name = $c->database ?? 'NULL';
+        $safe_database_name = 'undefined';
+
+        // $server_label = substr($caller->server->label ?? 'NULL', 0, 2) == 'p:'
+        //     ? substr($caller->server->label ?? 'NULL', 2)
+        // : $caller->server->label ?? 'NULL';
+        $server_label = $caller->server->label ?? 'NULL';
+        $index = 0;
+        $caller->table = [];
+		$data = [];
+
+        foreach($columns as $key => $value){
+            switch($value){
+                case 'DATABASE_CLASS': $data[$index] = $resource_ns . '\\' . $server_label . '\\' . $safe_database_name; break;
+                case 'SERVER_CLASS': $data[$index] = $resource_ns . '\\' . $server_label; break;
+                case 'CONNECTOR_CLASS': $data[$index] =  '\Approach\Service\MariaDB\Connector'; break;
+                case 'RESOURCE_CLASS': $data[$index] = $resource_ns; break;
+                case 'DATABASE_NAME': $data[$index] = $safe_database_name; break;
+                case 'SERVER_NAME': $data[$index] = $caller->server->label ?? 'NULL'; break;
+                case 'RESOURCE_PROTO': $data[$index] = 'MariaDB';
+                case 'NAME': $data[$index] = $caller->table['TABLE_NAME'] ?? 'NULL'; break;
+                case 'COMMENT': $data[$index] = $caller->table['TABLE_COMMENT'] ?? 'NULL'; break;
+                case 'ENGINE': $data[$index] = $caller->table['ENGINE'] ?? 'NULL'; break;
+                case 'ROW_FORMAT': $data[$index] = $caller->table['ROW_FORMAT'] ?? 'NULL'; break;
+                case 'TABLE_COLLATION': $data[$index] = $caller->table['TABLE_COLLATION'] ?? 'NULL'; break;
+                case 'CREATE_OPTIONS': $data[$index] = $caller->table['CREATE_OPTIONS'] ?? 'NULL'; break;
+                case 'TABLE_ROWS': $data[$index] = $caller->table['TABLE_ROWS'] ?? 'NULL'; break;
+                case 'AVG_ROW_LENGTH': $data[$index] = $caller->table['AVG_ROW_LENGTH'] ?? 'NULL'; break;
+                case 'DATA_LENGTH': $data[$index] = $caller->table['DATA_LENGTH'] ?? 'NULL'; break;
+                case 'MAX_DATA_LENGTH': $data[$index] = $caller->table['MAX_DATA_LENGTH'] ?? 'NULL'; break;
+                case 'INDEX_LENGTH': $data[$index] = $caller->table['INDEX_LENGTH'] ?? 'NULL'; break;
+                case 'DATA_FREE': $data[$index] = $caller->table['DATA_FREE'] ?? 'NULL'; break;
+                case 'AUTO_INCREMENT': $data[$index] = $caller->table['AUTO_INCREMENT'] ?? 'NULL'; break;
+                case 'CREATE_TIME': $data[$index] = $caller->table['CREATE_TIME'] ?? 'NULL'; break;
+                case 'UPDATE_TIME': $data[$index] = $caller->table['UPDATE_TIME'] ?? 'NULL'; break;
+                case 'CHECK_TIME': $data[$index] = $caller->table['CHECK_TIME'] ?? 'NULL'; break;
+                case 'CHECKSUM': $data[$index] = $caller->table['CHECKSUM'] ?? 'NULL'; break;
+                case 'TABLE_COMMENT': $data[$index] = $caller->table['TABLE_COMMENT'] ?? 'NULL'; break;
+            }
+            $index++;
+        }
+
+        return $data;
+    }
+
+	public static function equipReferenceToAccessors($columns, $accessors)
 	{
+		$data = [];
 		foreach ($accessors as $row) {
 			$str = explode('_', $row['CONSTRAINT_NAME']);
 			//		if($table == 'compositions'){ var_export($row); }
 			$index = array_search($row->data['COLUMN_NAME'], $columns);
 			if ($str[0] == 'PRIMARY') {
-				$dObj->primary_accessor = $index;
+				$data['primary_accessor'] = $index;
 			} else
-				$dObj->reference_to[$index] =
+				$data['reference_to'][$index] =
 					[
 						'schema' => $row->data['REFERENCED_TABLE_SCHEMA'],
 						'resource' => $row->data['REFERENCED_TABLE_NAME'],
 						'field' => $row->data['REFERENCED_COLUMN_NAME']
 					];
 		}
-		return $dObj;
+		return $data;
 	}
 
 	/**
@@ -415,7 +537,7 @@ class Table extends discover
 	 *
 	 */
 
-	public static function equipFieldPropertyMetadata($dObj, $columns, $fields, $accessors, $keyProperties)
+	public static function equipFieldPropertyMetadata($columns, $fields, $accessors, $keyProperties)
 	{
 		/*
 
@@ -435,79 +557,41 @@ class Table extends discover
 		}
 
 		*/
-		$dObj->_case_map = [];
-		$dObj->_label_map = [];
-		$dObj->label = [];
-		$dObj->type = [];
-		$dObj->default = [];
-		$dObj->source_type = [];
-		$dObj->source_default = [];
-		$dObj->nullable = [];
-		$dObj->description = [];
-		$dObj->constraint = [];
-		$dObj->accessor = [];
+		$data['_case_map'] = [];
+		$data['_index_map'] = [];
+		$data['label'] = [];
+		$data['type'] = [];
+		$data['default'] = [];
+		$data['source_type'] = [];
+		$data['source_default'] = [];
+		$data['nullable'] = [];
+		$data['description'] = [];
+		$data['constraint'] = [];
+		$data['accessor'] = [];
 
 		foreach ($columns as $index => $column) {
 			$index = array_search($column, $columns);
-			$dObj->_case_map[] = $column;
-			$dObj->_index_map[] = $index;
-			$dObj->label[$index] = $column;
-			$dObj->type[$index] = $fields[$column]['type'];
-			$dObj->default[$index] = $fields[$column]['default'];
-			$dObj->source_type[$index] = $fields[$column]['source_type'];
-			$dObj->source_default[$index] = $fields[$column]['source_default'];
-			$dObj->nullable[$index] = $fields[$column]['nullable'];
-			$dObj->description[$index] = $fields[$column]['description'];
-			$dObj->constraint[$index] = $fields[$column]['constraint'];
-			$dObj->accessor[$index] = $fields[$column]['accessor'];
+			$data['_case_map'][] = $column;
+			$data['_index_map'][] = $index;
+			$data['label'][$index] = $column;
+			$data['type'][$index] = $fields[$column]['type'];
+			$data['default'][$index] = $fields[$column]['default'];
+			$data['source_type'][$index] = $fields[$column]['source_type'];
+			$data['source_default'][$index] = $fields[$column]['source_default'];
+			$data['nullable'][$index] = $fields[$column]['nullable'];
+			$data['description'][$index] = $fields[$column]['description'];
+			$data['constraint'][$index] = $fields[$column]['constraint'];
+			$data['accessor'][$index] = $fields[$column]['accessor'];
 
+            // FIXME: Where are these being used or referenced?
 			if (isset($fields[$column]['primary_accessor']) && $fields[$column]['primary_accessor'] === true) {
-				$dObj->primary_accessor = $column;
-				$dObj->primary_accessor_symbol = $index;
+				$data['primary_accessor'] = $column;
+				$data['primary_accessor_symbol'] = $index;
 			}
 		}
-		return $dObj;
+		return $data;
 	}
-
-	public static function createMetadataBlock($obj, $columns): string
-    {
-		$php = '';
-
-		$i = 0;
-		$php .= PHP_EOL . '// Discovered Fields' . PHP_EOL;
-		$indices = [];
-		foreach ($columns as $col) {
-			$php .= "\t" . 'const ' . $col . ' = ' . $i . ';' . PHP_EOL;
-			$i++;
-			$indices[$col] = $i;
-		}
-
-		$php .= PHP_EOL . PHP_EOL . '// Discovered Field Metadata' . PHP_EOL;
-		$php .= "\t" . 'const _approach_field_profile_ = [' . PHP_EOL;
-
-		$metadata = [
-			'_case_map', '_index_map',
-			'label', 'type', 'default', 'source_type', 'source_default',
-			'nullable', 'description', 'constraint', 'accessor'
-		];
-
-		foreach ($metadata as $key) {
-			$php .= "\t\t" . 'MariaDB_field::' . $key . ' => [' . PHP_EOL;
-			foreach ($obj->{$key} as $i => $value) {
-				$prefix = '';
-				if ($key != '_case_map') {
-					$prefix = 'self::' . $columns[$i] . ' => ';
-				}
-				$php .= "\t\t\t" . $prefix . var_export($value, true) . ', ' . PHP_EOL;
-			}
-			$php .= "\t\t" . '],' . PHP_EOL;
-		}
-
-		$php .= "\t" . '];' . PHP_EOL;
-
-		return $php;
-	}
-
+    
 	public static function get_safe_table_name($table)
 	{
 		$fqcn = $table::class;
@@ -534,19 +618,18 @@ class Table extends discover
 			'.php';
 	}
 
-    public static function MintProfile(object $dataObject, $columns, $source_name): void
+    public static function MintProfile(object $dataObject, $aspects, $source_name): void
     {
         $filename = $dataObject->filename;
 
+		$ns = $dataObject->location;
         $uses = 'use \\Approach\\Resource\\Aspect\\Aspect;' . PHP_EOL;
-        $uses .= 'use \\Approach\\Resource\\MariaDB\\Aspect\\field as field_meta;' . PHP_EOL;
-        // foreach ($dataObject->use as $use) {
-        // 	$uses .= 'use ' . $use . ';' . PHP_EOL;
-        // }
 
-        // The namespace is practically the same as the caller's class name
-        $ns = $dataObject->location;
-        $uses .= 'use ' . $ns . '\\field as SelfField;' . PHP_EOL;
+		foreach($aspects as $aspect => $list){
+			$uc_aspect = ucfirst($aspect);
+			$uses .= 'use \\Approach\\Resource\\MariaDB\\Aspect\\'.$aspect.' as '.$aspect.'_meta;' . PHP_EOL;
+			$uses .= 'use ' . $ns . '\\'.$aspect.' as Self'.$uc_aspect.';' . PHP_EOL;
+		}
 
         $php =
             '<?php' . PHP_EOL .
@@ -560,43 +643,56 @@ class Table extends discover
 		
 		$php .= 'static $source = \'' . $source_name.'\';'.  PHP_EOL;
         $php .= 'static array $profile = [' . PHP_EOL;
+
+
 		$php .= "\t" . 'Aspect::field => [' . PHP_EOL;
 
-        $metadata = [
-            'label', 'type', 'default', 'source_type', 'source_default',
-            'nullable', 'description', 'constraint', 'accessor'
-        ];
+		$f = fopen('some.json', 'w');
+		fwrite($f, json_encode($aspects));
 
-        foreach ($columns as $col) {
-            $php .= "\t\t" . 'SelfField::' . $col . ' => [' . PHP_EOL;
-            foreach ($metadata as $key) {
-                $prefix = '';
-                if ($key != '_case_map') {
-                    $prefix = 'field_meta::' . $key . ' => SelfField::' . $key . '[SelfField::' . $col . '],';
-                }
-                $php .= "\t\t\t" . $prefix . PHP_EOL;
-            }
-            $php .= "\t\t" . '],' . PHP_EOL;
-        }
+		foreach($aspects as $aspect => $list)
+		{
+			$uc_aspect = ucfirst($aspect);
+			if(empty($list)){
+				continue; 
+			}
 
-        $php .= "\t" . '],' . PHP_EOL;
+			foreach ($list as $label => $metadata) {
+				$php .= "\t\t" . 'Self'.$uc_aspect.'::' . $label . ' => [' . PHP_EOL;
+				foreach ($metadata as $key) {
+					$prefix = '';
+					if ($key != '_case_map') {
+						$prefix = $aspect.'_meta::' . $key . ' => Self'.$uc_aspect.'::' . $key . '[Self'.$uc_aspect.'::' . $label . '],';
+					}
+					$php .= "\t\t\t" . $prefix . PHP_EOL;
+				}
+				$php .= "\t\t" . '],' . PHP_EOL;
+			}
+
+			$php .= "\t" . '],' . PHP_EOL;
+
+		}	
         $php .= '];' . PHP_EOL;
 
 		$matchs = [
-			"match",
-			"getType",
-			"getDefault",
-			"getSourceType",
-			"getSourceDefault",
-			"isNullable",
-			"getDescription",
-			"isAccessor",
-			"getReferenceByAccessor",
-			"getPrimaryAccessor",
-			"getProfileProperties"];
+			'match',
+			'getType',
+			'getDefault',
+			'getSourceType',
+			'getSourceDefault',
+			'isNullable',
+			'getDescription',
+			'isAccessor',
+			'getReferenceByAccessor',
+			'getPrimaryAccessor',
+			'getProfileProperties'];
 
 		foreach ($matchs as $match) {
-			$php .= 'public static function field_' . $match . '($what){	return SelfField::' . $match . '($what);	}' . PHP_EOL;
+			foreach($aspects as $aspect => $list){
+				$uc_aspect = ucfirst($aspect);
+				$php .= 'public static function '.$aspect.'_' . $match . '($what){	return Self'.$uc_aspect.'::' . $match . '($what);	}' . PHP_EOL;
+			}
+			$php.= PHP_EOL.PHP_EOL;
 		}
 
         $php .= PHP_EOL . '}' . PHP_EOL; 
@@ -604,40 +700,6 @@ class Table extends discover
         // Write the file
         file_put_contents($filename, $php);
     }
-
-	public static function MintAspect(object $dataObject, $columns, $aspect = 'field')
-	{
-		$filename = $dataObject->filename;
-
-		$uses = 'use \\Approach\\Resource\\MariaDB\\Aspect\\' . $aspect . ' as MariaDB_' . $aspect . ';';
-		// foreach ($dataObject->use as $use) {
-		// 	$uses .= 'use ' . $use . ';' . PHP_EOL;
-		// }
-
-		// The namespace is practically the same as the caller's class name
-		$ns = $dataObject->location;
-
-		$php =
-			'<?php' . PHP_EOL .
-			'namespace ' . $ns . ';'
-			. PHP_EOL . PHP_EOL .
-			$uses
-			. PHP_EOL . PHP_EOL;
-
-        $php .= 'class ' . $aspect . ' extends MariaDB_' . $aspect . PHP_EOL;
-        // Allman vs K&R, anyone? A debate for the ages
-		// For generated code especially: prefer more vertical AND horizontal space AND alignment where possible
-		// Also, we use hard tabs 'round these parts
-		$php .= PHP_EOL . '{' . PHP_EOL;
-
-		$php .= static::createMetadataBlock($dataObject, $columns);
-
-		$php .= PHP_EOL . '}' . PHP_EOL;
-
-		// Write the file
-		file_put_contents($filename, $php);
-	}
-
 
 	/*
 		Deprecated here, but useful elsewhere:

@@ -67,8 +67,10 @@ class Table extends Resource
 
 	public function discover()
 	{
+		echo 'wow ' . Resource::get_package_name() . ' is discovering' . PHP_EOL;
 		// echo PHP_EOL.$this->name. ' is discovering'.PHP_EOL;
-		discovery::define( caller: $this, which: discovery::field );
+		discovery::define( caller: $this );
+		
 	}
 
 	public static function get_database()

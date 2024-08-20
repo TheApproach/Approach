@@ -5,7 +5,7 @@ namespace Approach\Resource;
 use \Approach\nullstate;
 use \Approach\Resource\Aspect\Aspect;
 use \Approach\Resource\Aspect\discover;
-
+use PhpParser\Node\Stmt\Continue_;
 
 trait discoverability
 {
@@ -177,53 +177,80 @@ trait discoverability
 	public static function define($caller = null, $which = null)
 	{
 		$state = nullstate::ambiguous;
+		$config = [];
+
+		if(is_array($which)){}
 
 		switch ($which) {
-			case discover::container:
-				static::define_containers($caller);
-				break;
 			case discover::location:
-				static::define_locations($caller);
+				$config['location'] = static::define_locations($caller);
 				break;
 			case discover::operation:
-				static::define_operations($caller);
+				$config['operation'] = static::define_operations($caller);
 				break;
 			case discover::field:
-				$fields = static::define_fields($caller);
-				static::define_profile($caller, $fields);
+				$config['field'] = static::define_fields($caller);
                 break;
 			case discover::quality:
-				static::define_qualities($caller);
+				$config['quality'] =static::define_qualities($caller);
 				break;
 			case discover::quantity:
-				static::define_quantities($caller);
+				$config['quantity'] = static::define_quantities($caller);
 				break;
 			case discover::map:
-				static::define_maps($caller);
+				$config['map'] = static::define_maps($caller);
 				break;
 			case discover::state:
-				static::define_states($caller);
+				$config['state'] = static::define_states($caller);
 				break;
 			case discover::access:
-				static::define_access($caller);
+				$config['access'] = static::define_access($caller);
 				break;
 			case null:
-				static::define_containers($caller);
-				static::define_locations($caller);
-				static::define_operations($caller);
-				$fields = static::define_fields($caller);
-                static::define_profile($caller, $fields);
-				static::define_qualities($caller);
-				static::define_quantities($caller);
-				static::define_maps($caller);
-				static::define_states($caller);
-				static::define_access($caller);
+				$config['location'] = static::define_locations($caller);
+				$config['operation'] = static::define_operations($caller);
+				$config['field'] = static::define_fields($caller);
+				$config['quality'] = static::define_qualities($caller);
+				$config['quantity'] = static::define_quantities($caller);
+				$config['map'] = static::define_maps($caller);
+				$config['state'] = static::define_states($caller);
+				$config['access'] = static::define_access($caller);
 				break;
-			default:
+			default: break;
+		}
+		
+		// $f = fopen('some.json', 'w');
+
+		foreach($config as $which => $aspect){
+			// [symbols] expected to hold const indices for [data]
+			// [data] expected to hold metadata to be minted
+			// [filename] expected to hold value of file to be minted
+			// [which] passthru
+			// [package] base package of $caller
+			
+			// fwrite($f, $which . "\t:" . json_encode($aspect, JSON_PRETTY_PRINT) . "\n\n");
+
+			if(!isset($aspect['symbols'])){
+				echo PHP_EOL. $which. ' minting failure: ';
+				var_export($aspect);
+				continue;
+			}
+			if (!is_array($aspect['symbols'])) {
+				echo PHP_EOL . $which . ' minting failure: ';
+				var_export($aspect);
+				continue;
+			}
+			
+			$aspect['ns'] = $caller::get_aspect_namespace();
+			$aspect['package'] = $caller::get_package_name();
+			$aspect['which'] = $which;
+			$aspect['filename'] = $caller::get_aspect_directory() . DIRECTORY_SEPARATOR . $which . '.php'; 
+			static::MintAspect($aspect);
 		}
 
-		//TODO: Actually implement this
-//		static::define_profile();
+		static::define_profile($caller, $config); //, $path, $location); 
+		// $aspect_root = $caller::get_aspect_root(); ??
+		// $package = $caller::get_package_name(); adding this to 
 //		static::define_user_trait();
 
 		// check if parent::class is a self::class
@@ -236,7 +263,7 @@ trait discoverability
 
 	public static function define_containers($caller)
 	{
-		return true;
+		return [];
 	}
 	public static function define_fields($caller)
 	{
@@ -244,30 +271,126 @@ trait discoverability
 	}
 	public static function define_locations($caller)
 	{
-		return true;
+		return [];
 	}
 	public static function define_operations($caller)
 	{
-		return true;
+		return [];
 	}
 	public static function define_qualities($caller)
 	{
-		return true;
+		return [];
 	}
 	public static function define_quantities($caller)
 	{
-		return true;
+		return [];
 	}
 	public static function define_maps($caller)
 	{
-		return true;
+		return [];
 	}
 	public static function define_states($caller)
 	{
-		return true;
+		return [];
 	}
 	public static function define_access($caller)
 	{
-		return true;
+		return [];
 	}
+
+	public static function MintAspect($config)
+	{
+		$f = fopen('some.json', 'w');
+		fwrite($f, json_encode($config, JSON_PRETTY_PRINT));
+
+		$filename = $config['filename'];
+		$package = $config['package'];
+		$uc_aspect = ucfirst($config['which']);
+		$lc_aspect = strtolower($config['which']);
+		$ns = $config['ns'];
+
+		$uses = 'use \\Approach\\Resource\\'.$package.'\\Aspect\\' . $lc_aspect . ' as '.$package.'_' . $lc_aspect . ';';
+		// foreach ($dataObject->use as $use) {
+		// 	$uses .= 'use ' . $use . ';' . PHP_EOL;
+		// }
+
+		// The namespace is practically the same as the caller's class name
+		// it's available in define
+		$php =
+		'<?php' . PHP_EOL .
+			'namespace ' . $ns . ';'
+			. PHP_EOL . PHP_EOL .
+			$uses
+			. PHP_EOL . PHP_EOL;
+
+		$php .= 'class ' . $lc_aspect . ' extends '.$package.'_' . $lc_aspect . PHP_EOL;
+		// Allman vs K&R, anyone? A debate for the ages
+		// For generated code especially: prefer more vertical AND horizontal space AND alignment where possible
+		// Also, we use hard tabs 'round these parts
+		$php .= PHP_EOL . '{' . PHP_EOL;
+
+		$php .= static::MintMetadataBlock($config);
+
+		$php .= PHP_EOL . '}' . PHP_EOL;
+
+		if (!is_dir(static::get_aspect_directory())) {
+			mkdir(static::get_aspect_directory(), 0777, true);
+		} else {
+			chmod(static::get_aspect_directory(), 0777);
+			// recursive chmod
+			$objects = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(static::get_aspect_director()), \RecursiveIteratorIterator::SELF_FIRST);
+			foreach ($objects as $name => $object) {
+				chmod($name, 0777);
+			}
+		}
+
+		// Write the file
+		file_put_contents($filename, $php);
+	}
+	
+	public static function MintMetadataBlock($config): string
+	{
+		$package = $config['package'];
+		$uc_aspect = ucfirst($config['which']);
+		$lc_aspect = strtolower($config['which']);
+		$php = '';
+
+		$php .= PHP_EOL . '// Discovered ' . $uc_aspect . PHP_EOL;
+		$symbols = array_merge(['_case_map', '_index_map'], $config['symbols']);
+		// $symbols = $config['symbols'];
+
+		$indices = [];
+		$i = 0;
+		foreach ($symbols as $symbol) {
+			$php .= "\t" . 'const ' . $symbol . ' = ' . $i . ';' . PHP_EOL;
+			$i++;
+			$indices[$symbol] = $i;
+		}
+
+		$php .= PHP_EOL . PHP_EOL . '// Discovered ' . $uc_aspect . ' Metadata' . PHP_EOL;
+		$php .= "\t" . 'const _approach_' . $lc_aspect . '_profile_ = [' . PHP_EOL;
+
+
+		// $f = fopen('some.json', 'w');
+		// fwrite($f, json_encode($symbols, JSON_PRETTY_PRINT));
+        foreach ($config['data'] as $key => $data) {
+            if(!is_array($data)) continue;
+			echo 'key: ' . $key . PHP_EOL;
+			$php .= "\t\t" . $package . '_' . $lc_aspect . '::' . $key . ' => [' . PHP_EOL;
+			foreach ($data as $i => $value) {
+                echo PHP_EOL . $i . ' ' . $value . PHP_EOL;
+				$prefix = '';
+				if ($key != '_case_map') {
+					$prefix = 'self::' . $symbol[$i] . ' => ';
+				}
+				$php .= "\t\t\t" . $prefix . var_export($value, true) . ', ' . PHP_EOL;
+			}
+			$php .= "\t\t" . '],' . PHP_EOL;
+		}
+
+		$php .= "\t" . '];' . PHP_EOL;
+
+		return $php;
+	}
+
 }
