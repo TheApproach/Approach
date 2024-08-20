@@ -7,9 +7,9 @@ use Approach\Service\MariaDB\Connector;
 use Approach\deploy;
 use Approach\nullstate;
 use Approach\path;
-use Approach\Resource;
+use Approach\Resource\Resource as Resource;
 use Approach\Scope;
-use Approach\Service;
+use MyProject\Resource\MariaDB\MyData;
 use Tests\Support\UnitTester;
 
 /**
@@ -56,9 +56,9 @@ class MariaDBCest
 
     public function _before()
     {
-        $path_to_project = __DIR__ . '/../../support/test_project/';
-        $path_to_approach = __DIR__ . '/../../approach/';
-        $path_to_support = __DIR__ . '/../../support/';
+        $path_to_project = __DIR__ . '/../../support/test_project';
+        $path_to_approach = __DIR__ . '/../../approach';
+        $path_to_support = __DIR__ . '/../../support';
 
         $this->scope = new Scope(
             project: 'MyProject',
@@ -74,7 +74,6 @@ class MariaDBCest
                 deploy::resource_user->value => 'tom',
             ]
         );
-
         $this->server = new Server(
             host: 'localhost',  // Scope::GetDeploy( deploy::resource ),
             user: 'root',  // Scope::GetDeploy( deploy::resource_user ),
@@ -108,7 +107,7 @@ class MariaDBCest
         // Check if $state is a MySQLi error number or a nullstate enum instance.
         $I->assertTrue(
             $state instanceof nullstate ||
-            is_int($state)
+                is_int($state)
         );
 
         // If $state was a MySQLi error number, then output the error from the MySQLi connection at connector->connection
@@ -143,5 +142,11 @@ class MariaDBCest
         $this->server->discover();
 
         // Check if the server has a php file at Scope::GetPath( path::project ) /Resource/
+    }
+
+    public function trySQL(UnitTester $I)
+    {
+        // $r = Resource::find('MariaDB://MyData/test/names[id: 0..100][id]');
+        // $r->load();
     }
 }

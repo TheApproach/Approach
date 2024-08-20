@@ -19,7 +19,7 @@ enum path: int
 	case profiles			= 11;
 	case reports			= 12;
 	case tasks			 	= 13;
-	case statics			= 14;
+	case static				= 14;
 	case themes			 	= 15;
 	case tools			 	= 16;
 	case uploads			= 17;
@@ -36,8 +36,18 @@ enum path: int
 	// e.g. path::statics->path($project_dir);    // '/srv/project/static/'
 	public function get(string $project_dir = null): string
 	{
+		$support_dir=null;
+		$static_dir=null;
+		
 		if ($this !== self::project)
 			$project_dir == $project_dir ?? self::project->get() ?? '/srv/project/src';
+
+		if ($this !== self::support)
+			$support_dir == $support_dir ?? self::support->get() ?? '/srv/project/src/support';
+
+		if ($this !== self::static)
+			$static_dir == $static_dir ?? self::static->get() ?? '/srv/project/src/static';
+		
 
 		return match ($this) {
 			self::installed         => Scope::$context[context::path->value][$this->value] 	?? '/usr/local/approach/approach-' . MAJOR_VERSION . '-' . MINOR_VERSION . '/',
@@ -53,15 +63,17 @@ enum path: int
 			self::profiles          => Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/Service/profile/',
 			self::reports           => Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/Service/report/',
 			self::tasks             => Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/Service/tasks/',
-			self::statics           => Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/../static/',
-			self::themes            => Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/../static/themes/',
-			self::tools             => Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/../static/tools/',
-			self::uploads           => Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/../static/uploads/',
+			self::static			=> Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/../static/',
+			
+			self::themes            => Scope::$context[context::path->value][$this->value] 	?? $static_dir	. '/themes/',
+			self::tools             => Scope::$context[context::path->value][$this->value] 	?? $static_dir	. '/tools/',
+			self::uploads           => Scope::$context[context::path->value][$this->value] 	?? $static_dir	. '/uploads/',
+			
 			self::support           => Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/../support/',
-			self::pattern           => Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/../support/pattern/',
-			self::cache           	=> Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/../support/cache/',
-			self::extension         => Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/../support/lib/extension/',
-			self::community         => Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/../support/lib/community/',
+			self::pattern           => Scope::$context[context::path->value][$this->value] 	?? $support_dir . '/pattern/',
+			self::cache           	=> Scope::$context[context::path->value][$this->value] 	?? $support_dir . '/cache/',
+			self::extension         => Scope::$context[context::path->value][$this->value] 	?? $support_dir . '/lib/extension/',
+			self::community         => Scope::$context[context::path->value][$this->value] 	?? $support_dir . '/lib/community/',
 			// TODO: move to /../support/lib/vendor
 			self::vendor           	=> Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/../vendor/',
 			self::wild           	=> Scope::$context[context::path->value][$this->value] 	?? $project_dir . '/../support/lib/wild/'

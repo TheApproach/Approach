@@ -15,7 +15,7 @@
     "autoload": {
         "psr-4": {
             "Approach\\": "approach",
-            "Approach\\Render\\": "approach/Render"
+            "MyProject\\": "support/test_project"
         }
     },
     "authors": [

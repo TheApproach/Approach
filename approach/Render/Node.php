@@ -75,7 +75,7 @@ class Node extends Container
 	 */
 	
 	public $nodes = [];
-	public static Node $null;
+	public static Node|null $null;
 
 	use Node\Properties;
 	use Streamability;
