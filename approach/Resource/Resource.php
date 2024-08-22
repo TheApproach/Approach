@@ -199,10 +199,7 @@ class Resource extends RenderNode implements Stream
 	}
 
     public static function get_aspect_root($package){
-		$base_path = \Approach\Scope::$Active->path[path::project->value];
-        $base_path .= '/Resource/' . $package . '/Aspect';
-
-        return $base_path;
+		return \Approach\Scope::$Active->project . '\\Resource\\' . $package . '\\Aspect\\';
     }
 
 	/**

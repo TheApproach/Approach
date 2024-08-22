@@ -460,93 +460,96 @@ class Table extends discover
 		return ['symbols' => $symbols, 'data' => $data,  'path' => $classfile];
 	}
 
-    public static function define_profile($caller, $info): void
-    {			
-		$table = $caller->name;
-		echo 'Defining profile for MariaDB://' . $caller::SERVER_NAME . '/' . $caller::DATABASE_NAME . '/' . $table . PHP_EOL;
-        $f = fopen("some.json", 'w');
-		echo 'Info: ' . var_export($info) . PHP_EOL;
+    // public static function define_profile($caller, $info): void
+    // {			
+	// 	$table = $caller->name;
+	// 	echo 'Defining profile for MariaDB://' . $caller::SERVER_NAME . '/' . $caller::DATABASE_NAME . '/' . $table . PHP_EOL;
+    //     $f = fopen('some.json', 'w');
+	// 	/*echo 'Info: ' . var_export($info) . PHP_EOL;*/
 
-        foreach($info as $key => $config){
-            if(count($config) == 0) continue;
-            $aspect_path = $config['path'];
-            // $info[$key]['filename'] = $aspect_path . '/profile.php';
-            // $info[$key]['source_name'] = $table;
-        }
+    //     foreach($info as $key => $config){
+    //         if(count($config) == 0) continue;
+    //         $aspect_path = $config['path'];
+    //         // $info[$key]['filename'] = $aspect_path . '/profile.php';
+    //         // $info[$key]['source_name'] = $table;
+    //     }
 
-		$aspect_ns = $caller::class;
-		$classfile = static::get_table_classfile($caller);
+	// 	$aspect_ns = $caller::class;
+	// 	$classfile = static::get_table_classfile($caller);
 
-		$aspect_root = substr($classfile, 0, -4);
-		$length = strlen('/Resource/MariaDB');
-		$aspect_root = substr($classfile, 0, strpos($classfile, '/Resource/MariaDB') + $length);
-		$aspect_branch = substr($classfile, strpos($classfile, '/Resource/MariaDB') + $length );
-		$aspect_path = $aspect_root . '/Aspect' . $aspect_branch;
-		$aspect_path = substr($aspect_path, 0, -4);
+	// 	$aspect_root = substr($classfile, 0, -4);
+	// 	$length = strlen('/Resource/MariaDB');
+	// 	$aspect_root = substr($classfile, 0, strpos($classfile, '/Resource/MariaDB') + $length);
+	// 	$aspect_branch = substr($classfile, strpos($classfile, '/Resource/MariaDB') + $length );
+	// 	$aspect_path = $aspect_root . '/Aspect' . $aspect_branch;
+	// 	$aspect_path = substr($aspect_path, 0, -4);
 
-        $servername = $caller::SERVER_NAME;
-        $servername = substr($servername, 2);
-        $aspect_ns = substr($aspect_ns, 0, strpos($aspect_ns, $servername));
-        $aspect_branch = str_replace('/', '\\', $aspect_branch);
-        $aspect_ns .= 'Aspect' . $aspect_branch;
-        $aspect_ns = substr($aspect_ns, 0, -4);
+    //     $servername = $caller::SERVER_NAME;
+    //     $servername = substr($servername, 2);
+    //     $aspect_ns = substr($aspect_ns, 0, strpos($aspect_ns, $servername));
+    //     $aspect_branch = str_replace('/', '\\', $aspect_branch);
+    //     $aspect_ns .= 'Aspect' . $aspect_branch;
+    //     $aspect_ns = substr($aspect_ns, 0, -4);
 
-        $filename = $aspect_ns . '/profile.php';
-        $uses = 'use \\Approach\\Resource\\Aspect\\Aspect;' . PHP_EOL;
+    //     $filename = $aspect_ns . '/profile.php';
+    //     $uses = 'use \\Approach\\Resource\\Aspect\\Aspect;' . PHP_EOL;
 
-		foreach($info as $aspect => $list){
-            if(count($list) == 0) continue;
-			$uc_aspect = ucfirst($aspect);
-			$uses .= 'use \\Approach\\Resource\\MariaDB\\Aspect\\'.$aspect.' as '.$aspect.'_meta;' . PHP_EOL;
-			$uses .= 'use ' . $aspect_ns . '\\'.$aspect.' as Self'.$uc_aspect.';' . PHP_EOL;
-		}
+	// 	foreach($info as $aspect => $list){
+    //         if(count($list) == 0) continue;
+	// 		$uc_aspect = ucfirst($aspect);
+	// 		$uses .= 'use \\Approach\\Resource\\MariaDB\\Aspect\\'.$aspect.' as '.$aspect.'_meta;' . PHP_EOL;
+	// 		$uses .= 'use ' . $aspect_ns . '\\'.$aspect.' as Self'.$uc_aspect.';' . PHP_EOL;
+	// 	}
 
-        $php =
-            '<?php' . PHP_EOL .
-            'namespace ' . $aspect_ns . ';'
-            . PHP_EOL . PHP_EOL .
-            $uses
-            . PHP_EOL . PHP_EOL;
+    //     $php =
+    //         '<?php' . PHP_EOL .
+    //         'namespace ' . $aspect_ns . ';'
+    //         . PHP_EOL . PHP_EOL .
+    //         $uses
+    //         . PHP_EOL . PHP_EOL;
 
-		$php .= 'trait profile' . PHP_EOL;
-        $php .=  '{' . PHP_EOL;
+	// 	$php .= 'trait profile' . PHP_EOL;
+    //     $php .=  '{' . PHP_EOL;
 
-		$php .= 'static $source = \'' . $table.'\';'.  PHP_EOL;
-        $php .= 'static array $profile = [' . PHP_EOL;
+	// 	$php .= 'static $source = \'' . $table.'\';'.  PHP_EOL;
+    //     $php .= 'static array $profile = [' . PHP_EOL;
 
-        foreach($info as $aspect => $list)
-		$php .= static::MintProfile($aspect, $info);
+	// 	// fwrite($f, var_export($info, true));
 
-        $php .= '];' . PHP_EOL;
+    //     foreach($info as $aspect => $list){
+	// 		$php .= static::MintProfile($aspect, $info);
+	// 	}
 
-		$matchs = [
-			'match',
-			'getType',
-			'getDefault',
-			'getSourceType',
-			'getSourceDefault',
-			'isNullable',
-			'getDescription',
-			'isAccessor',
-			'getReferenceByAccessor',
-			'getPrimaryAccessor',
-			'getProfileProperties'];
+    //     $php .= '];' . PHP_EOL;
 
-		foreach ($matchs as $match) {
-			foreach($info as $aspect => $list){
-                if(count($list) == 0) continue;
-				$uc_aspect = ucfirst($aspect);
-				$php .= 'public static function '.$aspect.'_' . $match . '($what){	return Self'.$uc_aspect.'::' . $match . '($what);	}' . PHP_EOL;
-			}
-			$php.= PHP_EOL.PHP_EOL;
-		}
+	// 	$matchs = [
+	// 		'match',
+	// 		'getType',
+	// 		'getDefault',
+	// 		'getSourceType',
+	// 		'getSourceDefault',
+	// 		'isNullable',
+	// 		'getDescription',
+	// 		'isAccessor',
+	// 		'getReferenceByAccessor',
+	// 		'getPrimaryAccessor',
+	// 		'getProfileProperties'];
 
-        $php .= PHP_EOL . '}' . PHP_EOL; 
+	// 	foreach ($matchs as $match) {
+	// 		foreach($info as $aspect => $list){
+    //             if(count($list) == 0) continue;
+	// 			$uc_aspect = ucfirst($aspect);
+	// 			$php .= 'public static function '.$aspect.'_' . $match . '($what){	return Self'.$uc_aspect.'::' . $match . '($what);	}' . PHP_EOL;
+	// 		}
+	// 		$php.= PHP_EOL.PHP_EOL;
+	// 	}
 
-        fwrite($f, $php);
-        exit(0);
+    //     $php .= PHP_EOL . '}' . PHP_EOL; 
 
-    }
+    //     fwrite($f, $php);
+    //     exit(0);
+
+    // }
 
     public static function equipState($columns, $caller){
         $resource_ns = Scope::$Active->project . '\Resource\MariaDB';
@@ -710,40 +713,39 @@ class Table extends discover
 			'.php';
 	}
 
-    public static function MintProfile($aspect, $info)
-    {
-        $php = '';
-        $php .= "\t" . 'Aspect::' . $aspect . ' => [' . PHP_EOL;
+    // public static function MintProfile($aspect, $info)
+    // {
+    //     $php = '';
+    //     $php .= "\t" . 'Aspect::' . $aspect . ' => [' . PHP_EOL;
+	// 	if(empty($info[$aspect])){
+	// 		return $php . "\t" . '],' . PHP_EOL;
+	// 	}
 
-        $f = fopen("some.json", 'w');
+	// 	foreach($info as $aspect => $list)
+	// 	{
+	// 		$uc_aspect = ucfirst($aspect);
+	// 		if(empty($list)){
+	// 			continue; 
+	// 		}
 
-		foreach($info as $aspect => $list)
-		{
-			$uc_aspect = ucfirst($aspect);
-			if(empty($list)){
-				continue; 
-			}
+	// 		foreach ($list['symbols'] as $label) { // this weird? yup
+	// 			$php .= "\t\t" . 'Self'.$uc_aspect.'::' . $label . ' => [' . PHP_EOL;
+	// 			foreach ($list['data'] as $key => $data) {
+	// 				$prefix = '';
+	// 				if ($key != '_case_map') {
+	// 					$prefix = $aspect.'_meta::' . $key . ' => Self'.$uc_aspect.'::' . $key . '[Self'.$uc_aspect.'::' . $label . '],';
+	// 				}
+	// 				$php .= "\t\t\t" . $prefix . PHP_EOL;
+	// 			}
+	// 			$php .= "\t\t" . '],' . PHP_EOL;
+	// 		}
 
-			foreach ($list['data'] as $label => $metadata) {
-                if(!is_array($metadata)) continue;
-                // fwrite($f, json_encode($metadata, JSON_PRETTY_PRINT));
-				$php .= "\t\t" . 'Self'.$uc_aspect.'::' . $label . ' => [' . PHP_EOL;
-				foreach ($metadata as $key) {
-					$prefix = '';
-					if ($key != '_case_map') {
-						$prefix = $aspect.'_meta::' . $key . ' => Self'.$uc_aspect.'::' . $key . '[Self'.$uc_aspect.'::' . $label . '],';
-					}
-					$php .= "\t\t\t" . $prefix . PHP_EOL;
-				}
-				$php .= "\t\t" . '],' . PHP_EOL;
-			}
+	// 		$php .= "\t" . '],' . PHP_EOL;
 
-			$php .= "\t" . '],' . PHP_EOL;
+    //     }
 
-        }
-
-        return $php;    
-    }
+    //     return $php;    
+    // }
 
 	/*
 		Deprecated here, but useful elsewhere:
