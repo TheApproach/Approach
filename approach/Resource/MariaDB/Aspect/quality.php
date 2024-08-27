@@ -6,6 +6,7 @@ use \Approach\Render\Container;
 use \Approach\Render\Node;
 use \Approach\Render\Node\Keyed;
 use \Approach\nullstate;
+use MyProject\Resource\MariaDB\MyData\mysql\func;
 
 /**
  * field aspect class
@@ -86,14 +87,14 @@ class quality extends Container
             };
         } elseif (is_int($which)) {
             return match ($which) {
-                 self::label => 'label',
-                 self::description => 'description', 
-                 self::keywords => 'keywords',
-                 self::children => 'children',
-                 self::related => 'related',
-                 self::type => 'type',
-                 self::state => 'state',
-                 default => nullstate::undeclared,
+                self::label => 'label',
+                self::description => 'description',
+                self::keywords => 'keywords',
+                self::children => 'children',
+                self::related => 'related',
+                self::type => 'type',
+                self::state => 'state',
+                default => nullstate::undeclared,
             };
         }
         return nullstate::undeclared;
@@ -117,5 +118,45 @@ class quality extends Container
                 }
                 break;
         }
+    }
+
+    public static function getDefault($field)
+    {
+        return null;
+    }
+
+    public static function getSourceType($field)
+    {
+        return null;
+    }
+
+    public static function getSourceDefault($field)
+    {
+        return null;
+    }
+
+    public static function isNullable($field)
+    {
+        return null;
+    }
+
+    public static function getDescription($field)
+    {
+        return null;
+    }
+
+    public static function isAccessor($field)
+    {
+        return null;
+    }
+
+    public static function getReferenceByAccessor($field)
+    {
+        return null;
+    }
+
+    public static function getPrimaryAccessor($field)
+    {
+        return null;
     }
 }

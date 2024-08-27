@@ -18,6 +18,7 @@ namespace Approach\Resource;
 use Approach\nullstate;
 use Approach\Render\Node;
 use Approach\Resource\Aspect\aspects;
+use Approach\Resource\discoverability;
 use Approach\path;
 use Approach\Resource\Aspect\discover;
 use Approach\Resource\Aspect\Aspect;
@@ -49,6 +50,7 @@ const mode = 5;
 
 class Resource extends RenderNode implements Stream
 {
+	use discoverability;
 	public static function GetProfile(){	return [];	}
 	public static function GetSource(){ return 'Resource'; }
 	// TODO: Add a Resource\context class to hold the Aspects
@@ -104,18 +106,18 @@ class Resource extends RenderNode implements Stream
 		// $this->parseUri($where);
 	}
 
-	public function define()
-	{
-		$aspects = aspects::manifest($this);
+	// public function define()
+	// {
+	// 	$aspects = aspects::manifest($this);
 
-		// $this->aspects = $aspects;
-		// $this->aspects[aspects::container]->nodes = $aspects;
-		// $this->aspects[aspects::container]->nodes[aspects::container]->nodes = $aspects;
-		// $this->aspects[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes = $aspects;
-		// $this->aspects[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes = $aspects;
-		// $this->aspects[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes = $aspects;
-		// $this->aspects[aspects::container]->nodes[aspect
-	}
+	// 	// $this->aspects = $aspects;
+	// 	// $this->aspects[aspects::container]->nodes = $aspects;
+	// 	// $this->aspects[aspects::container]->nodes[aspects::container]->nodes = $aspects;
+	// 	// $this->aspects[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes = $aspects;
+	// 	// $this->aspects[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes = $aspects;
+	// 	// $this->aspects[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes = $aspects;
+	// 	// $this->aspects[aspects::container]->nodes[aspect
+	// }
 
 	public static function find(
 		string $where = '/',
@@ -198,11 +200,9 @@ class Resource extends RenderNode implements Stream
 		return $service->payload;
 	}
 
-    public static function get_aspect_root($package){
-		$base_path = \Approach\Scope::$Active->path[path::project->value];
-        $base_path .= '/Resource/' . $package . '/Aspect';
-
-        return $base_path;
+    public static function get_aspect_root($package): string
+    {
+		return \Approach\Scope::$Active->project . '\\Resource\\' . $package . '\\Aspect\\';
     }
 
 	/**
@@ -528,6 +528,23 @@ trait user_trait
 			// Get the directory of the file
 			(new \ReflectionClass(static::class))->getFileName() // Get the file name of the class
 		);
+		$dir_parts = explode('/', $aspect_directory );
+
+        $base = 0;
+        $package = 'Resource';
+        for($i=0,$L= count($dir_parts); $i < $L; $i++){
+          if( $dir_parts[$i] == 'Resource'){
+            $base = $i + 1;
+            $package = $dir_parts[$base];
+            break;
+          }
+        }
+        $aspect_ns = array_merge(
+          array_slice( $dir_parts, 0, $base+1 ),    //from start to base
+          ['Aspect'],
+          array_slice( $dir_parts, $base+1 ),  // from base to end
+        );
+        $aspect_directory = implode('/', $aspect_ns);
 
 		$aspect_directory .= '/' . $class . '/'; // Add the aspects directory to the path
 
@@ -553,24 +570,25 @@ trait user_trait
 		$class = end($class_ns);
 
 		$aspect_ns = static::get_aspect_root( static::get_package_name() );
-		$aspect = explode('\\',$aspect_ns);
 
-		for($i=0, $L=count($class_ns); $i<$L; $i++){
-			$ns = $class_ns[$i];
- 			$ans = array_shift($aspect);
-			if($ns == $ans){
-				continue;
-			}
-			else{
-				$aspect_ns .= implode('\\',array_slice($class_ns,$i));
-				break;
-			}
-		}
-		
-		/// MyProj/Resource/MyPack/found/found/item
+		$aspect = explode('\\',$aspect_ns);
+        $base = 0;
+
+        for($i=0,$L= count($class_ns); $i < $L; $i++){
+          if( $class_ns[$i] == 'Resource'){
+            $base = $i + 1;
+            $package = $class_ns[$base];
+            break;
+          }
+        }
+        $aspect_ns = array_merge(
+          array_slice( $class_ns, 0, $base+1 ),    //from start to base
+          ['Aspect'],
+          array_slice( $class_ns, $base+1 ),  // from base to end
+        );
+
+		return implode('\\', $aspect_ns);
 		/// MyProject/Resource/MyPack/Aspect/found/found/item
-		
-		return $aspect_ns.'\\'. $class ; // Add the class name as the last branch in the namespace
 	}
 
 	/**
@@ -971,16 +989,22 @@ trait user_trait
     }
 
 	public static function get_package_name($package = 'Resource'){
-		$class_name = get_called_class(); // should be MariaDB/Table but is Resource/Resource ;/
-		var_export($class_name);
+		$class_name = get_called_class(); //FIXME: should be MariaDB/Table but is Resource/Resource ;/
 		$class_parts = explode('\\',$class_name);
+ 
+		$base = 0;
 
+		for ($i = 0, $L = count($class_parts); $i < $L; $i++) {
+			if ($class_parts[$i] == 'Resource') {
+				$package = $class_parts[$i + 1];
+				break;
+			}
+		}
+/*
 		$resource_path = path::resource->get();
-		// var_export($resource_path);
 		$resource_parts = explode(DIRECTORY_SEPARATOR, $resource_path);
 		$resource_ns = end( $resource_parts  );
-		var_export($resource_ns);
-
+		
 		for($i=0,$L=count($class_parts); $i < $L; $i++ )
 		{
 			$part = $class_parts[$i];
@@ -988,6 +1012,7 @@ trait user_trait
 				$package = $class_parts[$i+1];
 			}
 		}
+*/
 		return $package;
 	}
 }

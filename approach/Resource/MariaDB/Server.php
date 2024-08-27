@@ -510,6 +510,7 @@ class Server extends Resource
 		foreach ($dbs as $db) {
 			$database = new Database($this, $db);
 			$database->discover();
+			static::define(caller: $database);
 		}
 	}
 
