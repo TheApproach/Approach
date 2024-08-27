@@ -49,6 +49,7 @@ class Connector extends Service
     {
 		foreach( $this->nodes as $server){
 			$server->discover();
+            Server::define(caller: $server);
 		}
         //$schemas = $this->inventory();
         //$this->manifest_fields($schemas);

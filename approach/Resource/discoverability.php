@@ -281,8 +281,8 @@ trait discoverability
 	 * 
 	 */
 
-	public static function define($caller = null, $which = null)
-	{
+	public static function define($caller = null, $which = null): void
+    {
 		$state = nullstate::ambiguous;
 		$config = [];
 
@@ -325,8 +325,6 @@ trait discoverability
 				break;
 			default: break;
 		}
-		
-		// $f = fopen('some.json', 'w');
 
 		foreach($config as $which => $aspect){
 			// [symbols] expected to hold const indices for [data]
@@ -335,11 +333,9 @@ trait discoverability
 			// [which] passthru
 			// [package] base package of $caller
 			
-			// fwrite($f, $which . "\t:" . json_encode($aspect, JSON_PRETTY_PRINT) . "\n\n");
-
 			if(!isset($aspect['symbols']) || !is_array($aspect['symbols'])){
 				echo PHP_EOL. $which. ' minting failure: ';
-				var_export($aspect);
+				/*var_export($aspect);*/
 				continue;
 			}
 			
@@ -347,6 +343,8 @@ trait discoverability
 			$aspect['package'] = $caller::get_package_name();
 			$aspect['which'] = $which;
 			$aspect['filename'] = $caller::get_aspect_directory() . DIRECTORY_SEPARATOR . $which . '.php'; 
+            $aspect['directory'] = $caller::get_aspect_directory();
+
 			static::MintAspect($aspect, $caller);
 		}
 
@@ -402,36 +400,15 @@ trait discoverability
 	{
 		/*echo 'Info: ' . var_export($info) . PHP_EOL;*/
 
-		// foreach ($info as $key => $config) {
-		// 	if (count($config) == 0) continue;
-		// 	$aspect_path = $config['path'];
-		// 	// $info[$key]['filename'] = $aspect_path . '/profile.php';
-		// 	// $info[$key]['source_name'] = $table;
-		// }
+        $aspect_ns = $caller::get_aspect_namespace();
 
-		// $aspect_ns = $caller::class;
-		// $classfile = static::get_table_classfile($caller);
-
-		// $aspect_root = substr($classfile, 0, -4);
-		// $length = strlen('/Resource/' . $caller::get_package_name());
-		// $aspect_root = substr($classfile, 0, strpos($classfile, '/Resource/' . $caller::get_package_name()) + $length);
-		// $aspect_branch = substr($classfile, strpos($classfile, '/Resource/' . $caller::get_package_name()) + $length);
-		// $aspect_path = $aspect_root . '/Aspect' . $aspect_branch;
-		// $aspect_path = substr($aspect_path, 0, -4);
-
-		// $servername = $caller::SERVER_NAME;
-		// $servername = substr($servername, 2);
-		// $aspect_ns = substr($aspect_ns, 0, strpos($aspect_ns, $servername));
-		// $aspect_branch = str_replace('/', '\\', $aspect_branch);
-		// $aspect_ns .= 'Aspect' . $aspect_branch;
-		// $aspect_ns = substr($aspect_ns, 0, -4);
-
-		$aspect_ns = $caller::get_aspect_namespace();
-		$filename = $caller::get_aspect_directory() . DIRECTORY_SEPARATOR . 'profile.php';
+		$filename = $caller::get_aspect_directory() . 'profile.php';
 		// $table = $caller->name;
 
+        $f = fopen('some.json', 'w');
+        fwrite($f, $filename);
+
 		echo 'Defining profile for ' . $caller::class . PHP_EOL;
-		$f = fopen('some.php', 'w');
 
 		$uses = 'use \\Approach\\Resource\\Aspect\\Aspect;' . PHP_EOL;
 
@@ -485,8 +462,7 @@ trait discoverability
 
 		$php .= PHP_EOL . '}' . PHP_EOL;
 
-		fwrite($f, $php);
-		exit(0);
+        file_put_contents($filename, $php);
 	}
 
 
@@ -532,11 +508,16 @@ trait discoverability
 	
 	public static function MintAspect($config, $caller)
 	{
-		$filename = $config['filename'];
+        $filename = $config['filename'];
+
 		$package = $config['package'];
+		// $package = $caller::get_package_name(); //? How about this?
 		$uc_aspect = ucfirst($config['which']);
 		$lc_aspect = strtolower($config['which']);
 		$ns = $config['ns'];
+		// that should do it -- $package is off :think:/
+		// it should be MariaDB
+		// not Resource. Might be something wrong with the Reflection
 
 		$uses = 'use \\Approach\\Resource\\'.$package.'\\Aspect\\' . $lc_aspect . ' as '.$package.'_' . $lc_aspect . ';';
 		// foreach ($dataObject->use as $use) {
@@ -560,18 +541,7 @@ trait discoverability
 
 		$php .= static::MintMetadataBlock($config);
 
-		$php .= PHP_EOL . '}' . PHP_EOL;
-
-		if (!is_dir($caller::get_aspect_directory())) {
-			mkdir($caller::get_aspect_directory(), 0777, true);
-		} else {
-			chmod($caller::get_aspect_directory(), 0777);
-			// recursive chmod
-			$objects = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($caller::get_aspect_directory()), \RecursiveIteratorIterator::SELF_FIRST);
-			foreach ($objects as $name => $object) {
-				chmod($name, 0777);
-			}
-		}
+        $php .= PHP_EOL . '}' . PHP_EOL;
 
 		// Write the file
 		file_put_contents($filename, $php);
@@ -599,15 +569,10 @@ trait discoverability
 		$php .= PHP_EOL . PHP_EOL . '// Discovered ' . $uc_aspect . ' Metadata' . PHP_EOL;
 		$php .= "\t" . 'const _approach_' . $lc_aspect . '_profile_ = [' . PHP_EOL;
 
-
-		// $f = fopen('some.json', 'w');
-		// fwrite($f, json_encode($symbols, JSON_PRETTY_PRINT));
         foreach ($config['data'] as $key => $data) {
             if(!is_array($data)) continue;
-			echo 'key: ' . $key . PHP_EOL;
 			$php .= "\t\t" . $package . '_' . $lc_aspect . '::' . $key . ' => [' . PHP_EOL;
 			foreach ($data as $i => $value) {
-                echo PHP_EOL . $i . ' ' . $value . PHP_EOL;
 				$prefix = '';
 				if ($key != '_case_map') {
 					$prefix = 'self::' . $symbols[$i] . ' => ';

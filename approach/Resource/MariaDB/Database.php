@@ -58,12 +58,15 @@ use Approach\Resource\Aspect\aspects;
 use Approach\Resource\Aspect\operation;
 use Approach\Resource\MariaDB\Server;
 use Approach\Resource\Resource;
+
+use Approach\Resource\discoverability as discoverability;
 use Approach\path;
 use Approach\runtime;
 use Approach\Scope;
 
 class Database extends Resource
 {
+    // use discoverability;
     // The table list. Aggregates all tables in the database and their metadata
     public array $tables = [];
 
@@ -319,9 +322,9 @@ class Database extends Resource
             $ascii = ord($char);
             // If character is not a-z, A-Z, 0-9, or _, or if it's a number at the start of the string
             if (!(($ascii >= 48 && $ascii <= 57 && $i != 0) ||  // 0-9 (not at start)
-                    ($ascii >= 65 && $ascii <= 90) ||  // A-Z
-                    ($ascii >= 97 && $ascii <= 122) ||  // a-z
-                    ($ascii == 95))) {  // _
+                ($ascii >= 65 && $ascii <= 90) ||  // A-Z
+                ($ascii >= 97 && $ascii <= 122) ||  // a-z
+                ($ascii == 95))) {  // _
                 $className[$i] = '';
             }
         }
@@ -434,6 +437,12 @@ class Database extends Resource
 
             $this->nodes[$table_safe] = new $classname(name: $table['TABLE_NAME'], database: $this);
             $this->nodes[$table_safe]->discover();
+            
+            $f = fopen('some1.json', 'w');
+            fwrite($f, json_encode($this->nodes[$table_safe], JSON_PRETTY_PRINT));
+            // exit(1);
+
+            static::define(caller: $this->nodes[$table_safe]);
         }
 
         /*
