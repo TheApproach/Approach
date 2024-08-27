@@ -245,7 +245,7 @@ trait discoverability
 			$aspect['package'] = $caller::get_package_name();
 			$aspect['which'] = $which;
 			$aspect['filename'] = $caller::get_aspect_directory() . DIRECTORY_SEPARATOR . $which . '.php'; 
-			static::MintAspect($aspect);
+			static::MintAspect($aspect, $caller);
 		}
 
 		static::define_profile($caller, $config); //, $path, $location); 
@@ -298,7 +298,7 @@ trait discoverability
 		return [];
 	}
 
-	public static function MintAspect($config)
+	public static function MintAspect($config, $caller)
 	{
 		$f = fopen('some.json', 'w');
 		fwrite($f, json_encode($config, JSON_PRETTY_PRINT));
@@ -333,12 +333,12 @@ trait discoverability
 
 		$php .= PHP_EOL . '}' . PHP_EOL;
 
-		if (!is_dir(static::get_aspect_directory())) {
-			mkdir(static::get_aspect_directory(), 0777, true);
+		if (!is_dir($caller::get_aspect_directory())) {
+			mkdir($caller::get_aspect_directory(), 0777, true);
 		} else {
-			chmod(static::get_aspect_directory(), 0777);
+			chmod($caller::get_aspect_directory(), 0777);
 			// recursive chmod
-			$objects = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(static::get_aspect_director()), \RecursiveIteratorIterator::SELF_FIRST);
+			$objects = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($caller::get_aspect_directory()), \RecursiveIteratorIterator::SELF_FIRST);
 			foreach ($objects as $name => $object) {
 				chmod($name, 0777);
 			}
@@ -381,7 +381,7 @@ trait discoverability
                 echo PHP_EOL . $i . ' ' . $value . PHP_EOL;
 				$prefix = '';
 				if ($key != '_case_map') {
-					$prefix = 'self::' . $symbol[$i] . ' => ';
+					$prefix = 'self::' . $symbols[$i] . ' => ';
 				}
 				$php .= "\t\t\t" . $prefix . var_export($value, true) . ', ' . PHP_EOL;
 			}

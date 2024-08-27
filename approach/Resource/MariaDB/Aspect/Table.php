@@ -8,6 +8,7 @@ use \Approach\nullstate;
 use Approach\path;
 use Approach\Resource\Resource;
 use Approach\Scope;
+use PhpParser\Node\Stmt\Continue_;
 
 // trait table_discoverability
 // {
@@ -286,6 +287,25 @@ class Table extends discover
 		// Make sure we're using the right database
 		$sql = 'USE ' . $caller::DATABASE_NAME . ';';
 		$result = $connection->query($sql);
+		
+		$aspect_ns = $caller::class;
+		$classfile = static::get_table_classfile($caller);
+
+		$aspect_root = substr($classfile, 0, -4);
+		$length = strlen('/Resource/MariaDB');
+		$aspect_root = substr($classfile, 0, strpos($classfile, '/Resource/MariaDB') + $length);
+		$aspect_branch = substr($classfile, strpos($classfile, '/Resource/MariaDB') + $length );
+		$aspect_path = $aspect_root . '/Aspect' . $aspect_branch;
+		$aspect_path = substr($aspect_path, 0, -4);
+
+
+        $servername = $caller::SERVER_NAME;
+        $servername = substr($servername, 2);
+        $aspect_ns = substr($aspect_ns, 0, strpos($aspect_ns, $servername));
+        $aspect_branch = str_replace('/', '\\', $aspect_branch);
+        $aspect_ns .= 'Aspect' . $aspect_branch;
+        $aspect_ns = substr($aspect_ns, 0, -4);
+
 
 		// Check for errors
 		if (!$result) {
@@ -332,9 +352,10 @@ class Table extends discover
             $data['type'][$index] = 'NULL';
         }
 
-        $data =  array_merge($data, self::equipState($symbols, $caller));
+        $data['state'] =  self::equipState($symbols, $caller);
+        $data['location'] = $aspect_ns;
 
-		return ['symbols' => $symbols, 'data' => $data ];
+		return ['symbols' => $symbols, 'data' => $data, 'path' => $caller::get_aspect_directory()];
     }
 
 	public static function define_fields($caller): false|array
@@ -342,7 +363,6 @@ class Table extends discover
 		$table = $caller->name;
 		echo 'Defining fields for MariaDB://' . $caller::SERVER_NAME . '/' . $caller::DATABASE_NAME . '/' . $table . PHP_EOL;
 		$aspect_ns = $caller::class;
-		$aspect_ns_root = $aspect_ns::get_aspect_directory();
 		$connection = $caller->database->server->connection;
 
 		// Make sure we're using the right database
@@ -444,16 +464,88 @@ class Table extends discover
     {			
 		$table = $caller->name;
 		echo 'Defining profile for MariaDB://' . $caller::SERVER_NAME . '/' . $caller::DATABASE_NAME . '/' . $table . PHP_EOL;
+        $f = fopen("some.json", 'w');
 		echo 'Info: ' . var_export($info) . PHP_EOL;
 
-		$aspect_path = $info['path'];
-		$dObj = new \stdClass();
-		// location is actually the namespace all the aspects should mint to 
-		$dObj->location = $info['field']['data']->location;
-		$dObj->filename = $aspect_path . '/profile.php';
-		$dObj->source_name = $table;
+        foreach($info as $key => $config){
+            if(count($config) == 0) continue;
+            $aspect_path = $config['path'];
+            // $info[$key]['filename'] = $aspect_path . '/profile.php';
+            // $info[$key]['source_name'] = $table;
+        }
 
-		static::MintProfile($dObj, $info, $table); //,  $classpath);
+		$aspect_ns = $caller::class;
+		$classfile = static::get_table_classfile($caller);
+
+		$aspect_root = substr($classfile, 0, -4);
+		$length = strlen('/Resource/MariaDB');
+		$aspect_root = substr($classfile, 0, strpos($classfile, '/Resource/MariaDB') + $length);
+		$aspect_branch = substr($classfile, strpos($classfile, '/Resource/MariaDB') + $length );
+		$aspect_path = $aspect_root . '/Aspect' . $aspect_branch;
+		$aspect_path = substr($aspect_path, 0, -4);
+
+        $servername = $caller::SERVER_NAME;
+        $servername = substr($servername, 2);
+        $aspect_ns = substr($aspect_ns, 0, strpos($aspect_ns, $servername));
+        $aspect_branch = str_replace('/', '\\', $aspect_branch);
+        $aspect_ns .= 'Aspect' . $aspect_branch;
+        $aspect_ns = substr($aspect_ns, 0, -4);
+
+        $filename = $aspect_ns . '/profile.php';
+        $uses = 'use \\Approach\\Resource\\Aspect\\Aspect;' . PHP_EOL;
+
+		foreach($info as $aspect => $list){
+            if(count($list) == 0) continue;
+			$uc_aspect = ucfirst($aspect);
+			$uses .= 'use \\Approach\\Resource\\MariaDB\\Aspect\\'.$aspect.' as '.$aspect.'_meta;' . PHP_EOL;
+			$uses .= 'use ' . $aspect_ns . '\\'.$aspect.' as Self'.$uc_aspect.';' . PHP_EOL;
+		}
+
+        $php =
+            '<?php' . PHP_EOL .
+            'namespace ' . $aspect_ns . ';'
+            . PHP_EOL . PHP_EOL .
+            $uses
+            . PHP_EOL . PHP_EOL;
+
+		$php .= 'trait profile' . PHP_EOL;
+        $php .=  '{' . PHP_EOL;
+
+		$php .= 'static $source = \'' . $table.'\';'.  PHP_EOL;
+        $php .= 'static array $profile = [' . PHP_EOL;
+
+        foreach($info as $aspect => $list)
+		$php .= static::MintProfile($aspect, $info);
+
+        $php .= '];' . PHP_EOL;
+
+		$matchs = [
+			'match',
+			'getType',
+			'getDefault',
+			'getSourceType',
+			'getSourceDefault',
+			'isNullable',
+			'getDescription',
+			'isAccessor',
+			'getReferenceByAccessor',
+			'getPrimaryAccessor',
+			'getProfileProperties'];
+
+		foreach ($matchs as $match) {
+			foreach($info as $aspect => $list){
+                if(count($list) == 0) continue;
+				$uc_aspect = ucfirst($aspect);
+				$php .= 'public static function '.$aspect.'_' . $match . '($what){	return Self'.$uc_aspect.'::' . $match . '($what);	}' . PHP_EOL;
+			}
+			$php.= PHP_EOL.PHP_EOL;
+		}
+
+        $php .= PHP_EOL . '}' . PHP_EOL; 
+
+        fwrite($f, $php);
+        exit(0);
+
     }
 
     public static function equipState($columns, $caller){
@@ -618,46 +710,23 @@ class Table extends discover
 			'.php';
 	}
 
-    public static function MintProfile(object $dataObject, $aspects, $source_name): void
+    public static function MintProfile($aspect, $info)
     {
-        $filename = $dataObject->filename;
+        $php = '';
+        $php .= "\t" . 'Aspect::' . $aspect . ' => [' . PHP_EOL;
 
-		$ns = $dataObject->location;
-        $uses = 'use \\Approach\\Resource\\Aspect\\Aspect;' . PHP_EOL;
+        $f = fopen("some.json", 'w');
 
-		foreach($aspects as $aspect => $list){
-			$uc_aspect = ucfirst($aspect);
-			$uses .= 'use \\Approach\\Resource\\MariaDB\\Aspect\\'.$aspect.' as '.$aspect.'_meta;' . PHP_EOL;
-			$uses .= 'use ' . $ns . '\\'.$aspect.' as Self'.$uc_aspect.';' . PHP_EOL;
-		}
-
-        $php =
-            '<?php' . PHP_EOL .
-            'namespace ' . $ns . ';'
-            . PHP_EOL . PHP_EOL .
-            $uses
-            . PHP_EOL . PHP_EOL;
-
-		$php .= 'trait profile' . PHP_EOL;
-        $php .=  '{' . PHP_EOL;
-		
-		$php .= 'static $source = \'' . $source_name.'\';'.  PHP_EOL;
-        $php .= 'static array $profile = [' . PHP_EOL;
-
-
-		$php .= "\t" . 'Aspect::field => [' . PHP_EOL;
-
-		$f = fopen('some.json', 'w');
-		fwrite($f, json_encode($aspects));
-
-		foreach($aspects as $aspect => $list)
+		foreach($info as $aspect => $list)
 		{
 			$uc_aspect = ucfirst($aspect);
 			if(empty($list)){
 				continue; 
 			}
 
-			foreach ($list as $label => $metadata) {
+			foreach ($list['data'] as $label => $metadata) {
+                if(!is_array($metadata)) continue;
+                // fwrite($f, json_encode($metadata, JSON_PRETTY_PRINT));
 				$php .= "\t\t" . 'Self'.$uc_aspect.'::' . $label . ' => [' . PHP_EOL;
 				foreach ($metadata as $key) {
 					$prefix = '';
@@ -671,34 +740,9 @@ class Table extends discover
 
 			$php .= "\t" . '],' . PHP_EOL;
 
-		}	
-        $php .= '];' . PHP_EOL;
+        }
 
-		$matchs = [
-			'match',
-			'getType',
-			'getDefault',
-			'getSourceType',
-			'getSourceDefault',
-			'isNullable',
-			'getDescription',
-			'isAccessor',
-			'getReferenceByAccessor',
-			'getPrimaryAccessor',
-			'getProfileProperties'];
-
-		foreach ($matchs as $match) {
-			foreach($aspects as $aspect => $list){
-				$uc_aspect = ucfirst($aspect);
-				$php .= 'public static function '.$aspect.'_' . $match . '($what){	return Self'.$uc_aspect.'::' . $match . '($what);	}' . PHP_EOL;
-			}
-			$php.= PHP_EOL.PHP_EOL;
-		}
-
-        $php .= PHP_EOL . '}' . PHP_EOL; 
-
-        // Write the file
-        file_put_contents($filename, $php);
+        return $php;    
     }
 
 	/*
