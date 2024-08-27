@@ -339,15 +339,14 @@ class Aspect extends Container
 
 class operation extends Aspect
 {
-	public static $method;										// method to be used to access the resource
-	public static $parameters;									// parameters that the operation accepts
-	public static $accepts;										// media type(s) that the operation can consume
-	public static $provides;									// media type(s) that the operation can produce
-	public static $requires;									// resources that are required to access the resource
-	public static $errors;										// errors that the operation can return
-	public static $signature;									// headers of the operation
-	public static $description;									// description of the operation
-
+	public static      $method;										// method to be used to access the resource
+	public static      $parameters;									// parameters that the operation accepts
+	public static      $accepts;										// media type(s) that the operation can consume
+	public static      $provides;									// media type(s) that the operation can produce
+	public static      $requires;									// resources that are required to access the resource
+	public static      $errors;										// errors that the operation can return
+	public static      $signature;									// headers of the operation
+	public static      $description;									// description of the operation
 	public static bool $is_create; 								// whether the operation is a create operation
 	public static bool $is_read; 								// whether the operation is a read operation
 	public static bool $is_update; 								// whether the operation is an update operation

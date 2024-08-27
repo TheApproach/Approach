@@ -2,13 +2,120 @@
 
 namespace Approach\Resource;
 
+use \Approach\Scope;
 use \Approach\nullstate;
+use \Approach\runtime;
 use \Approach\Resource\Aspect\Aspect;
 use \Approach\Resource\Aspect\discover;
-use PhpParser\Node\Stmt\Continue_;
+
+
 
 trait discoverability
 {
+	static $aspect_metadata = [
+		'location'	=>	[
+			'proto',
+			'prefix',
+			'where',
+			'relative',
+			'is_recursive',
+			'requires_proto',
+			'requires_prefix',
+		],
+		'field'		=>	[
+			'label',
+			'type',
+			'default',
+			'source_type',
+			'source_default',
+			'nullable',
+			'description',
+			'constraint',
+			'accessor',
+			'reference_to',
+			'primary_accessor',
+		],
+		'quality'	=>	[
+			'label',
+			'description',
+			'keywords',
+			'children',
+			'related',
+			'type',
+			'state',
+		],
+		'state'		=>	[
+			'label',
+			'description',
+			'values',
+			'initial',
+			'final',
+			'transitions',
+			'transitions_from',
+			'transitions_to',
+		],
+		'quantity'		=>	[
+			'label',
+			'description',
+			'values',
+			'ranges',
+			'units',
+			'unit_labels',
+			'min',
+			'max',
+			'step',
+			'precision',
+		],
+		'operation'		=> [
+			'method',
+			'parameters',
+			'accepts',
+			'provides',
+			'requires',
+			'errors',
+			'signature',
+			'description',
+			'is_create',
+			'is_read',
+			'is_update',
+			'is_delete',
+			'is_list',
+			'is_search',
+			'is_action',
+			'is_function',
+		],
+		'map'			=> [
+			'type',
+			'label',
+			'tag',
+			'version',
+			'last_modified',
+			'description',
+			'from',
+			'to',
+			'known_callers',
+			'previous',
+			'map',
+		],
+		'authorization'	=>	[
+			'label',
+			'description',
+			'realms',
+			'roles',
+			'permissions',
+			'degree',
+			'read',
+			'write',
+			'update',
+			'delete',
+			'create',
+			'list',
+			'search',
+			'action',
+			'admin',
+			'browse',
+		]
+	];
 	/*
 	* @comprehension Resource/Aspects::define
 	*
@@ -174,8 +281,8 @@ trait discoverability
 	 * 
 	 */
 
-	public static function define($caller = null, $which = null)
-	{
+	public static function define($caller = null, $which = null): void
+    {
 		$state = nullstate::ambiguous;
 		$config = [];
 
@@ -218,8 +325,6 @@ trait discoverability
 				break;
 			default: break;
 		}
-		
-		// $f = fopen('some.json', 'w');
 
 		foreach($config as $which => $aspect){
 			// [symbols] expected to hold const indices for [data]
@@ -228,16 +333,9 @@ trait discoverability
 			// [which] passthru
 			// [package] base package of $caller
 			
-			// fwrite($f, $which . "\t:" . json_encode($aspect, JSON_PRETTY_PRINT) . "\n\n");
-
-			if(!isset($aspect['symbols'])){
+			if(!isset($aspect['symbols']) || !is_array($aspect['symbols'])){
 				echo PHP_EOL. $which. ' minting failure: ';
-				var_export($aspect);
-				continue;
-			}
-			if (!is_array($aspect['symbols'])) {
-				echo PHP_EOL . $which . ' minting failure: ';
-				var_export($aspect);
+				/*var_export($aspect);*/
 				continue;
 			}
 			
@@ -245,19 +343,19 @@ trait discoverability
 			$aspect['package'] = $caller::get_package_name();
 			$aspect['which'] = $which;
 			$aspect['filename'] = $caller::get_aspect_directory() . DIRECTORY_SEPARATOR . $which . '.php'; 
+            $aspect['directory'] = $caller::get_aspect_directory();
+
 			static::MintAspect($aspect, $caller);
 		}
 
 		static::define_profile($caller, $config); //, $path, $location); 
-		// $aspect_root = $caller::get_aspect_root(); ??
-		// $package = $caller::get_package_name(); adding this to 
-//		static::define_user_trait();
 
-		// check if parent::class is a self::class
-		// if so, call parent::define($which), else nothing
-
-		if (is_subclass_of(parent::class, self::class) || parent::class === self::class) {
-			parent::class::define($which);
+		Scope::$Active->mode = runtime::debug;
+		if( !Scope::$Active->mode !== runtime::debug )
+		{
+			if (is_subclass_of(parent::class, self::class) || parent::class === self::class) {
+				parent::class::define($which);
+			}
 		}
 	}
 
@@ -298,16 +396,128 @@ trait discoverability
 		return [];
 	}
 
+	public static function define_profile($caller, $info): void
+	{
+		/*echo 'Info: ' . var_export($info) . PHP_EOL;*/
+
+        $aspect_ns = $caller::get_aspect_namespace();
+
+		$filename = $caller::get_aspect_directory() . 'profile.php';
+		// $table = $caller->name;
+
+        $f = fopen('some.json', 'w');
+        fwrite($f, $filename);
+
+		echo 'Defining profile for ' . $caller::class . PHP_EOL;
+
+		$uses = 'use \\Approach\\Resource\\Aspect\\Aspect;' . PHP_EOL;
+
+		foreach ($info as $aspect => $list) {
+			// this makes it skip including locate and everything else that doesn't exist
+			if (count($list) == 0) continue;
+			$uc_aspect = ucfirst($aspect);
+			$uses .= 'use \\Approach\\Resource\\'.$caller::get_package_name().'\\Aspect\\' . $aspect . ' as ' . $aspect . '_meta;' . PHP_EOL;
+			$uses .= 'use ' . $aspect_ns . '\\' . $aspect . ' as Self' . $uc_aspect . ';' . PHP_EOL;
+		}
+
+		$php =
+			'<?php' . PHP_EOL .
+			'namespace ' . $aspect_ns . ';'
+			. PHP_EOL . PHP_EOL .
+			$uses
+			. PHP_EOL . PHP_EOL;
+
+		$php .= 'trait profile' . PHP_EOL;
+		$php .=  '{' . PHP_EOL;
+
+		// $php .= 'static $source = \'' . /* this used to be $table->name but not everything has a ->name */ . '\';' .  PHP_EOL;
+		$php .= 'static array $profile = [' . PHP_EOL;
+
+		$php .= static::MintProfile($info);
+
+		$php .= '];' . PHP_EOL;
+
+		$matches = [
+			'match',
+			'getType',
+			'getDefault',
+			'getSourceType',
+			'getSourceDefault',
+			'isNullable',
+			'getDescription',
+			'isAccessor',
+			'getReferenceByAccessor',
+			'getPrimaryAccessor',
+			'getProfileProperties'
+		];
+
+		foreach ($matches as $match) {
+			foreach ($info as $aspect => $list) {
+				if (count($list) == 0) continue;
+				$uc_aspect = ucfirst($aspect);
+				$php .= 'public static function ' . $aspect . '_' . $match . '($what){	return Self' . $uc_aspect . '::' . $match . '($what);	}' . PHP_EOL;
+			}
+			$php .= PHP_EOL . PHP_EOL;
+		}
+
+		$php .= PHP_EOL . '}' . PHP_EOL;
+
+        file_put_contents($filename, $php);
+	}
+
+
+	public static function MintProfile($info)
+	{
+		$php = '';
+
+		foreach ($info as $aspect => $list) {
+			$php .= "\t" . 'Aspect::' . $aspect . ' => [' . PHP_EOL;
+			if(empty($list)){
+				$php .= "\t" . '],' . PHP_EOL;
+				continue;
+			}
+
+			$uc_aspect = ucfirst($aspect);
+			if (empty($list)) {
+				continue;
+			} 
+
+			foreach ($list['symbols'] as $label) { 
+				$php .= "\t\t" . 'Self' . $uc_aspect . '::' . $label . ' => [' . PHP_EOL;
+				foreach (static::$aspect_metadata[$aspect] as $key ) {
+					$line = '';
+					if ($key != '_case_map') {
+						$line = $aspect . '_meta::' . $key . ' => Self' . $uc_aspect . '::' . $key . '[ Self' . $uc_aspect . '::' . $label . ' ],';
+					}
+					if($line != ''){
+							
+						$php .= "\t\t\t" . $line . PHP_EOL;
+					}
+				}
+
+				// Closing $aspect property list
+				$php .= "\t\t" . '],' . PHP_EOL;
+			}
+
+			// Closing $aspect
+			$php .= "\t" . '],' . PHP_EOL;
+		}
+
+		return $php;
+	}
+	
 	public static function MintAspect($config, $caller)
 	{
-		$f = fopen('some.json', 'w');
-		fwrite($f, json_encode($config, JSON_PRETTY_PRINT));
+        $filename = $config['filename'];
 
-		$filename = $config['filename'];
 		$package = $config['package'];
+		// $package = $caller::get_package_name(); //? How about this?
 		$uc_aspect = ucfirst($config['which']);
 		$lc_aspect = strtolower($config['which']);
 		$ns = $config['ns'];
+		// that should do it -- $package is off :think:/
+		// it should be MariaDB
+		// not Resource. Might be something wrong with the Reflection
 
 		$uses = 'use \\Approach\\Resource\\'.$package.'\\Aspect\\' . $lc_aspect . ' as '.$package.'_' . $lc_aspect . ';';
 		// foreach ($dataObject->use as $use) {
@@ -331,18 +541,7 @@ trait discoverability
 
 		$php .= static::MintMetadataBlock($config);
 
-		$php .= PHP_EOL . '}' . PHP_EOL;
-
-		if (!is_dir($caller::get_aspect_directory())) {
-			mkdir($caller::get_aspect_directory(), 0777, true);
-		} else {
-			chmod($caller::get_aspect_directory(), 0777);
-			// recursive chmod
-			$objects = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($caller::get_aspect_directory()), \RecursiveIteratorIterator::SELF_FIRST);
-			foreach ($objects as $name => $object) {
-				chmod($name, 0777);
-			}
-		}
+        $php .= PHP_EOL . '}' . PHP_EOL;
 
 		// Write the file
 		file_put_contents($filename, $php);
@@ -370,15 +569,10 @@ trait discoverability
 		$php .= PHP_EOL . PHP_EOL . '// Discovered ' . $uc_aspect . ' Metadata' . PHP_EOL;
 		$php .= "\t" . 'const _approach_' . $lc_aspect . '_profile_ = [' . PHP_EOL;
 
-
-		// $f = fopen('some.json', 'w');
-		// fwrite($f, json_encode($symbols, JSON_PRETTY_PRINT));
         foreach ($config['data'] as $key => $data) {
             if(!is_array($data)) continue;
-			echo 'key: ' . $key . PHP_EOL;
 			$php .= "\t\t" . $package . '_' . $lc_aspect . '::' . $key . ' => [' . PHP_EOL;
 			foreach ($data as $i => $value) {
-                echo PHP_EOL . $i . ' ' . $value . PHP_EOL;
 				$prefix = '';
 				if ($key != '_case_map') {
 					$prefix = 'self::' . $symbols[$i] . ' => ';
