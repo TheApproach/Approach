@@ -101,12 +101,16 @@ use Approach\Service\Service;
 use Approach\Service\MariaDB;
 use Approach\Render\Node;
 use Approach\Resource\Resource;
+use Approach\Resource\MariaDB\Aspect\Server as server_discoverable;
+use Approach\Resource\MariaDB\Aspect\Database as discoverable;
 use \stringable;
 use \Approach\Scope;
 use \Approach\path;
 use \Approach\deploy;
 use \Approach\nullstate;
 use Approach\runtime;
+use ReflectionClass;
+
 //use PHPUnit\Event\Runtime\PHP;
 
 class Server extends Resource
@@ -155,7 +159,7 @@ class Server extends Resource
 			if (!isset($this->{$key}) && defined(static::class . '::' . $key)) {
 				$this->{$key} = constant(static::class . '::' . $key);
 			}
-		}
+        }
 
 		// Fallback Defaults
 		$this->host        = $this->host     ?? Scope::GetDeploy(deploy::resource);
@@ -174,7 +178,6 @@ class Server extends Resource
 			$this->ssl_ca ||
 			$this->ssl_capath ||
 			$this->ssl_cipher;
-
 
 		/* Check if we should skip this connection or not */
 		if (!$this->skip_connection) {
@@ -242,22 +245,12 @@ class Server extends Resource
 
 	public function connect($host = null, $user = null, $pass = null, $db = null, $port = null, $socket = null)
 	{
-
-		// $path_to_project = __DIR__ . '/../..';
-		// $path_to_approach = __DIR__ . '/../../approach/';
-		// $path_to_support = __DIR__ . '/../../support/';
-
-		// $this->scope = new Scope(
-		// 	path: [
-		// 		path::project->value        =>  $path_to_project,
-		// 		path::installed->value      =>  $path_to_approach,
-		// 		path::support->value        =>  $path_to_support,
-		// 	],
-		// );
-
 		$this->connector = new MariaDB\Connector();
-		$state = $this->connector->connect(server: $this);
 
+		if(isset($pass)){
+			$this->pass = $pass;
+		}
+		$state = $this->connector->connect(server: $this);
 		// If $state was a MySQLi error number, then output the error from the MySQLi connection at connector->connection
 		if (!($state instanceof nullstate) && $state > 0) {
 			throw new \Exception('Connection failed: ' . $this->connection->connect_error);
@@ -481,7 +474,7 @@ class Server extends Resource
 	{
 
 		$resource_root = Scope::GetPath(path::resource) . 'MariaDB' . DIRECTORY_SEPARATOR;
-		$resource_ns = Scope::$Active->project . '\\Resource\\MariaDB\\';
+		$resource_ns = Scope::$Active->project . '\\Resource\\MariaDB';
 		$safe = ''; // We will use this to hold a safe version of $this->label
 
 		// Check if $this->label starts with 'p:' (persistent)
@@ -493,186 +486,124 @@ class Server extends Resource
 		// Remove characters that are invalid for class names for this->label
 		$safe = preg_replace('/[^a-zA-Z0-9_]/', '', $safe);
 
+		$constants = [];
+		if (!empty($this->host))
+			$constants[] = 'HOST = \'' . $this->host . '\'';
+		if (!empty($this->user))
+			$constants[] = 'USER = \'' . $this->user . '\'';
+		if(!empty($this->pass)) 
+			$constants[]= 'PASS = \''.$this->pass.'\'';
+		if (!empty($this->database))
+			$constants[] = 'DATABASE = \'' . $this->database . '\'';
+		if (!empty($this->port))
+			$constants[] = 'PORT = \'' . $this->port . '\'';
+		if (!empty($this->socket))
+			$constants[] = 'SOCKET = \'' . $this->socket . '\'';
+		if(!empty($this->ssl_key)) 
+			$constants[]= 'SSL_KEY = \''.$this->ssl_key.'\'';
+		if (!empty($this->ssl_cert))
+			$constants[] = 'SSL_CERT = \'' . $this->ssl_cert . '\'';
+		if (!empty($this->ssl_ca))
+			$constants[] = 'SSL_CA = \'' . $this->ssl_ca . '\'';
+		if (!empty($this->ssl_capath))
+			$constants[] = 'SSL_CAPATH = \'' . $this->ssl_capath . '\'';
+		if (!empty($this->ssl_cipher))
+			$constants[] = 'SSL_CIPHER = \'' . $this->ssl_cipher . '\'';
+		if (!empty($this->charset))
+			$constants[] = 'CHARSET = \'' . $this->charset . '\'';
+		if (!empty($this->collation))
+			$constants[] = 'COLLATION = \'' . $this->collation . '\'';
+		if (!empty($this->timeout))
+			$constants[] = 'TIMEOUT = \'' . $this->timeout . '\'';
+		if (!empty($this->persistent))
+			$constants[] = 'PERSISTENT = \'' . $this->persistent . '\'';
+		if (!empty($this->skip_connection))
+			$constants[] = 'SKIP_CONNECTION = \'' . $this->skip_connection . '\'';
+		if (!empty($this->is_galera))
+			$constants[] = 'IS_GALERA = \'' . $this->is_galera . '\'';
+		$constants[] = 'CONNECTOR_CLASS = \'\\Approach\\Service\\MariaDB\\Connector\''; 
+
 		/* TODO: Actually use Imprint::Mint with a Class Pattern */
-		$this->MintResourceClass(
-			path: $resource_root . $safe . '.php',
-			class: Scope::$Active->project . '\\Resource\\MariaDB\\' . $safe,
-			extends: static::class,
-			namespace: Scope::$Active->project . '\\Resource\\MariaDB\\',
-			uses: [],
-			// constants: [],
-			// properties: [],
-			// methods: [],
+		$classname = $resource_ns . '\\' . $safe ;
+		// if (!class_exists($classname)) {
+			$this->MintResourceClass(
+				path: $resource_root . $safe . '.php',
+				class: Scope::$Active->project . '\\Resource\\MariaDB\\' . $safe,
+				extends: 'MariaDB\Server',
+				namespace: Scope::$Active->project . '\\Resource\\MariaDB',
+				uses: ['\Approach\Resource\MariaDB'],
+				constants: $constants,
+				// properties: [],
+				// methods: [],
+			);
+		// }
+		
+		
+		$this->__update_composer_autoloader(
+			resource_root: NULL,
+			resource_class: 'MariaDB\\' . $safe
 		);
+
+		// echo PHP_EOL . PHP_EOL;
+		// exit('MariaDB\\' . $safe);
+		$name = Scope::$Active->project . '\\Resource\\MariaDB\\' . $safe;
+		// TO DO: figure out better symbol forwarding / looping mechanism
+		$init = [
+			'host'				=>	$this->host, 
+			'user'				=>	$this->user, 
+			'pass'				=>	$this->pass, 
+			'database'			=>	$this->database, 
+			'socket'			=>	$this->socket, 
+			'ssl_key'			=>	$this->ssl_key, 
+			'ssl_cert'			=>	$this->ssl_cert, 
+			'ssl_ca'			=>	$this->ssl_ca, 
+			'ssl_capath'		=>	$this->ssl_capath, 
+			'ssl_cipher'		=>	$this->ssl_cipher, 
+			'charset'			=>	$this->charset, 
+			'collation'			=>	$this->collation, 
+			'timeout'			=>	$this->timeout, 
+			'persistent'		=>	$this->persistent, 
+			'skip_connection'	=>	$this->skip_connection, 
+			'is_galera'			=>	$this->is_galera, 
+			'label'				=>	$this->label, 
+		];
+		foreach($init as $k => $v){
+			if( empty($v) ) unset($init[$k]);
+		}
+		$tmp = new $name(
+			...$init
+		);
+
+		server_discoverable::define(caller: $tmp);
+
+
+		
+
 
 		// Discover the databases
 		$dbs = $this->GetDatabaseList();
 		foreach ($dbs as $db) {
 			$database = new Database($this, $db);
 			$database->discover();
-			static::define(caller: $database);
+
+			$safe_database_name = $database->sanitize_class_name($database->database);
+
+			$resource_root = $resource_root ?? path::resource->get();
+            $resource_ns = '\\' . Scope::$Active->project . '\\Resource';
+            $name = $resource_ns . '\\MariaDB\\' . $safe . '\\' . $safe_database_name;
+            
+            $database->__update_composer_autoloader(
+                resource_root: NULL,
+                resource_class: 'MariaDB\\' . $safe . '\\' . $safe_database_name
+            );
+
+			$tmp = new $name(
+				$this, $db 
+            );
+
+			discoverable::define(caller: $tmp);
+
+			/*static::define(caller: $database);*/
 		}
-	}
-
-	/**
-	 * Mint a class file for a database
-	 * @param string $path The path to write the class file to
-	 * @param string $class The class name
-	 * @param string $extends The name of the class to extend
-	 * @param string $namespace The namespace to unselectOption('selector');
-	 * @param string[] $uses A list of classes to use
-	 * @param string[] $constants A list of constants to define
-	 * @param string[] $properties A list of properties to define
-	 * @param string[] $methods A list of methods to define
-	 */
-	public function MintResourceClass(
-		string $path,
-		string $class,
-		string $extends,
-		string $namespace,
-		array $uses = [],
-		array $constants = [],
-		array $properties = [],
-		array $methods = [],
-		$overwrite = false
-	): void {
-		// Grab the last part of the class name for the label
-		$class = explode('\\', $class);
-		$class = $class[count($class) - 1];
-
-		$extends = $extends ?? '\Approach\Resource\MariaDB\Server';
-		$namespace = $namespace ?? Scope::$Active->project . '\Resource';
-		$uses = $uses ?? [
-			static::class,
-		];
-		if (empty($constants)) {
-			if (!empty($this->host))
-				$constants[] = 'const HOST = \'' . $this->host . '\';';
-			if (!empty($this->user))
-				$constants[] = 'const USER = \'' . $this->user . '\';';
-			// if(!empty($this->pass)) 
-			// 	$constants[]= 'const PASS = \''.$this->pass.'\';';
-			if (!empty($this->database))
-				$constants[] = 'const DATABASE = \'' . $this->database . '\';';
-			if (!empty($this->port))
-				$constants[] = 'const PORT = \'' . $this->port . '\';';
-			if (!empty($this->socket))
-				$constants[] = 'const SOCKET = \'' . $this->socket . '\';';
-			// if(!empty($this->ssl_key)) 
-			// 	$constants[]= 'const SSL_KEY = \''.$this->ssl_key.'\';';
-			if (!empty($this->ssl_cert))
-				$constants[] = 'const SSL_CERT = \'' . $this->ssl_cert . '\';';
-			if (!empty($this->ssl_ca))
-				$constants[] = 'const SSL_CA = \'' . $this->ssl_ca . '\';';
-			if (!empty($this->ssl_capath))
-				$constants[] = 'const SSL_CAPATH = \'' . $this->ssl_capath . '\';';
-			if (!empty($this->ssl_cipher))
-				$constants[] = 'const SSL_CIPHER = \'' . $this->ssl_cipher . '\';';
-			if (!empty($this->charset))
-				$constants[] = 'const CHARSET = \'' . $this->charset . '\';';
-			if (!empty($this->collation))
-				$constants[] = 'const COLLATION = \'' . $this->collation . '\';';
-			if (!empty($this->timeout))
-				$constants[] = 'const TIMEOUT = \'' . $this->timeout . '\';';
-			if (!empty($this->persistent))
-				$constants[] = 'const PERSISTENT = \'' . $this->persistent . '\';';
-			if (!empty($this->skip_connection))
-				$constants[] = 'const SKIP_CONNECTION = \'' . $this->skip_connection . '\';';
-			if (!empty($this->is_galera))
-				$constants[] = 'const IS_GALERA = \'' . $this->is_galera . '\';';
-			$constants[] = 'const CONNECTOR_CLASS = \'\\Approach\\Service\\MariaDB\\Connector\';';
-		}
-
-		$traits = $traits ?? [
-			// Add additional trait blocks for your server classes here
-			// 'use \Approach\Resource\MyResource\connectivity;',
-			// 'use \Approach\Resource\MyResource\discovery;',...
-			'use ' . $class . '_user_trait;',
-		];
-
-		$properties = $properties ?? [
-			// Add additional properties for your server classes here
-			//'public bool $is_connected = false;',
-		];
-
-		$methods = $methods ?? [
-			// Add additional method blocks for your server classes here
-		];
-		$insert = [];
-		$insert[] = implode(PHP_EOL . "\t", $traits);
-		$insert[] = implode(PHP_EOL . "\t", $constants);
-		$insert[] = implode(PHP_EOL . "\t", $properties);
-		$insert[] = implode(PHP_EOL . "\t", $methods);
-
-		$namespace = trim($namespace, '\\');
-		$extends = '\\' . trim($extends, '\\');
-		// Generate the class file
-		$content = '<?php' . PHP_EOL . PHP_EOL . <<<CLASS
-namespace $namespace;
-
-class $class extends $extends
-{
-	{$insert[0]}
-	{$insert[1]}
-	{$insert[2]}
-	{$insert[3]}
-}
-
-CLASS;
-		
-		$file_dir = dirname($path);
-		// Make sure the path/ and path/user_trait.php exist
-		if (!file_exists($file_dir)) mkdir($file_dir, 0770, true);
-		if (!file_exists($file_dir . '/' . $class . '_user_trait.php')) {
-			$user_trait =
-				'<?php
-
-namespace ' . $namespace . ';
-
-trait ' . $class . '_user_trait
-{
-	/**** User Trait ****
-	 * 
-	 *  This trait is used to add user functionality to an Approach Resource.
-	 * 
-	 *  Anything you add here will be available to the primary resource of
-	 *  this namespace. 
-	 * 
-	 *  This is a good place to use hooks and/or override methods to achieve
-	 *  desired functionality.
-	 * 
-	 *  Examples include: 
-	 *    - Adding a user_id property
-	 *    - Changing the behavior of the load() or save() method
-	 *    - Adding behavior with preload(), onsave(), postpush(), onpull(), preacquire(), etc..
-	 *    - Adding functions that work with your custom operations and aspects
-	 *    - Tieing into the map system deeper
-	 * 
-	 * This trait is automatically included in the class that is generated, so
-	 * you can use it immediately. This file is here for your convenience
-	 * and will not be overwritten by the generator.
-	 * 
-	 */
-}';
-
-			$file = fopen($file_dir . DIRECTORY_SEPARATOR . $class . '_user_trait.php', 'w');
-			fwrite($file, $user_trait);
-			fclose($file);
-		}
-
-		$isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
-
-		// swap out backslashes for forward slashes on windows
-		$path = $isWindows ? str_replace('\\', '/', $path) : $path;
-
-		// Create the directory if it doesn't exist
-		$dir = dirname($path);
-		if (!is_dir($dir)) {
-			mkdir($dir, 0770, true);
-		}
-
-		echo PHP_EOL . 'Creating class file	: ' . $path . PHP_EOL;
-		// Write the class file
-		file_put_contents($path, $content);
 	}
 }

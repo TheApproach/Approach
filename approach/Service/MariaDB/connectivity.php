@@ -26,6 +26,7 @@ trait connectivity
 		if( !$server ){
 			throw new \Exception('Default MariaDB Server configuration not provided');
 		}
+		
 		// foreach ($this->nodes as &$server)
 		// {
 			$state = nullstate::ambiguous;

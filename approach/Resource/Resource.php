@@ -50,7 +50,6 @@ const mode = 5;
 
 class Resource extends RenderNode implements Stream
 {
-	use discoverability;
 	public static function GetProfile(){	return [];	}
 	public static function GetSource(){ return 'Resource'; }
 	// TODO: Add a Resource\context class to hold the Aspects
@@ -138,7 +137,7 @@ class Resource extends RenderNode implements Stream
 
 		if(class_exists( $new_resource )){
 			$r = new $$new_resource;
-		} 
+		}
 		else {
 			$r = new static;
 		}
@@ -152,8 +151,8 @@ class Resource extends RenderNode implements Stream
 
 	// gen-delims  = :   /   ?   #   [   ]   @
 
-	// sub-delims  = !   $   &   ' " (   ) *  +  ,  ;  =	
-	  
+	// sub-delims  = !   $   &   ' " (   ) *  +  ,  ;  =
+
 	public function sort(\Stringable|string|Aspect $by, bool $ascending = true)
 	{
 		if (!($by instanceof Aspect)) {
@@ -238,6 +237,7 @@ class Resource extends RenderNode implements Stream
 			$extends = $extends ?? '\Approach\Resource\\' . $package . '\Server';
 			$namespace =
 				$namespace ?? \Approach\Scope::$Active->project . '\Resource';
+			
 			$uses = $uses ?? [static::class];
 
 			$content = "<?php " . PHP_EOL . PHP_EOL;
@@ -248,7 +248,15 @@ class Resource extends RenderNode implements Stream
 			foreach ($uses as $use) {
 				$content .= 'use ' . $use . ';' . PHP_EOL;
 			}
-			$content .= 'use ' . $namespace . '\\' . $class . '\\user_trait as aspects;' . PHP_EOL . PHP_EOL;
+
+			// this namespace is not right for appending \Aspect
+			$aspect_namespace = str_replace(
+				'\\Resource\\' . $package,
+				'\\Resource\\' . $package . '\\Aspect',
+				$namespace
+			);
+
+			$content .= 'use ' . $aspect_namespace . '\\' . $class . '\\user_trait as aspects;' . PHP_EOL . PHP_EOL;
 			$profilePath = $namespace;
 			// make it into \Resource\Aspect\MariaDB
 			$profilePath = str_replace(
@@ -260,10 +268,13 @@ class Resource extends RenderNode implements Stream
 			// Write the class
 			$content .=
 				'class ' . $class . ' extends ' . $extends . '{' . PHP_EOL . PHP_EOL;
-			
+
 			$content .= "\t" .	'/** Link minted Resource to its Aspects Profile */' . PHP_EOL;
 			$content .= "\t" . 'public static function GetProfile()		{ 	return aspects::$profile;	}' . PHP_EOL;
-			$content .= "\t" . 'public static function GetSourceName()	{	return aspects::$source;	}' . PHP_EOL . PHP_EOL;
+
+			// TODO: Get Source Properly................
+			$content .= "\t" . '// GetSourceName yourself from somewhere ' . PHP_EOL . PHP_EOL;
+			// $content .= "\t" . 'public static function GetSourceName()	{	return aspects::$source;	}' . PHP_EOL . PHP_EOL;
 
 			$content .=
 				"\t// Change the user_trait to add functionality to this generated class" .
@@ -306,6 +317,7 @@ namespace ' .
 trait user_trait
 {
 	use profile;
+		
 	/**** User Trait ****
 	 *
 	 *  This trait is used to add user functionality to an Approach Resource.
@@ -759,7 +771,7 @@ trait user_trait
     }
 
 	static function parsePartHead($head): array|string{
-		// parse ! or ^ in ! name 
+		// parse ! or ^ in ! name
 		// check if self::$Operations[self::WANT_PREFIX] or self::$Operations[self::REJECT_PREFIX] is present
 		$logicalOps = [self::$Operations[self::WANT_PREFIX], self::$Operations[self::REJECT_PREFIX]];
 		foreach ($logicalOps as $op) {
@@ -831,7 +843,7 @@ trait user_trait
 					if(is_array($value)){
 						$weights['value'] = $value[1];
 						$value = $value[0];
-					} 
+					}
 					if (is_array($field)){
 						$weights['qualifier'] = $field[0];
 						$field = $field[1];
@@ -920,7 +932,7 @@ trait user_trait
 	public static function tillFirstDelim($path): string{
 		$first_delim = self::getDelimiterPositionEfficient($path);
 		return $first_delim === false ? $path : substr($path, 0, $first_delim);
-	} 
+	}
 
     /**
      * Parse an URI into its components
@@ -943,7 +955,7 @@ trait user_trait
 
         $pathCombined = $primary['path'];
 
-		// function parsing 
+		// function parsing
         $last_bracket = strrpos($pathCombined, self::$Operations[self::CLOSE_INDEX]);
         $first_dot = strpos($pathCombined, '.', $last_bracket);
         if ($first_dot !== false) {
@@ -991,7 +1003,7 @@ trait user_trait
 	public static function get_package_name($package = 'Resource'){
 		$class_name = get_called_class(); //FIXME: should be MariaDB/Table but is Resource/Resource ;/
 		$class_parts = explode('\\',$class_name);
- 
+
 		$base = 0;
 
 		for ($i = 0, $L = count($class_parts); $i < $L; $i++) {
@@ -1004,7 +1016,7 @@ trait user_trait
 		$resource_path = path::resource->get();
 		$resource_parts = explode(DIRECTORY_SEPARATOR, $resource_path);
 		$resource_ns = end( $resource_parts  );
-		
+
 		for($i=0,$L=count($class_parts); $i < $L; $i++ )
 		{
 			$part = $class_parts[$i];

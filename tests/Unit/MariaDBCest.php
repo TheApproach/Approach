@@ -68,17 +68,18 @@ class MariaDBCest
                 path::support->value => $path_to_support,
             ],
             deployment: [
-                deploy::base->value => 'suitespace.corp',
-                deploy::ensemble->value => 'system-00.suitespace.corp',
-                deploy::resource->value => 'database-01.system-00.suitespace.corp',
-                deploy::resource_user->value => 'tom',
+                deploy::base->value => 'localhost',
+                deploy::ensemble->value => 'localhost',
+                deploy::resource->value => 'localhost',
+                deploy::resource_user->value => 'root',
             ]
         );
+
         $this->server = new Server(
             host: 'localhost',  // Scope::GetDeploy( deploy::resource ),
             user: 'root',  // Scope::GetDeploy( deploy::resource_user ),
             port: 3306,
-            pass: 'NoobScience',
+            pass: 'NoobScience', 
             database: 'test',
             label: 'MyData'
         );
@@ -101,6 +102,7 @@ class MariaDBCest
 
     public function connectToDatabase(UnitTester $I)
     {
+        // connect should have params?
         $state = $this->server->connect();
         $this->connector = $this->server->connector;
 
@@ -137,16 +139,25 @@ class MariaDBCest
         $I->assertEquals($state, nullstate::defined);
     }
 
-    public function checkServerLevelDiscovery(UnitTester $I)
+    public function checkServerDiscovery(UnitTester $I)
     {
         $this->server->discover();
 
         // Check if the server has a php file at Scope::GetPath( path::project ) /Resource/
     }
 
-    public function trySQL(UnitTester $I)
+    // we really got to get better at doing this instead of echo/print/json lol
+    public function tryMyDataFind(UnitTester $I)
     {
-        // $r = Resource::find('MariaDB://MyData/test/names[id: 0..100][id]');
+        // instead of this...
+        // $server = new MyData(pass: 'NoobScience'); // or this
+        // even though Resource::find() should I think work after at least a MyData has been connected hmm idk
+        $this->server::find('test/names[id: 0..100][id]');
+        // okay let's try
         // $r->load();
+    }
+    public function tryResouceFind(UnitTester $I)
+    {
+        $r = Resource::find('MariaDB://MyData/test/names[id: 0..100][id]');
     }
 }

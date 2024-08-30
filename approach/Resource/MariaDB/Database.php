@@ -59,7 +59,7 @@ use Approach\Resource\Aspect\operation;
 use Approach\Resource\MariaDB\Server;
 use Approach\Resource\Resource;
 
-use Approach\Resource\discoverability as discoverability;
+use Approach\Resource\MariaDB\Aspect\Table as discoverable;
 use Approach\path;
 use Approach\runtime;
 use Approach\Scope;
@@ -355,24 +355,27 @@ class Database extends Resource
 
         $server_safe = $this->sanitize_class_name($server_label);
 
-        $this->MintResourceClass(
-            path: $resource_root . DIRECTORY_SEPARATOR . $server_safe . DIRECTORY_SEPARATOR . $safe_database_name . '.php',
-            class: $resource_root . '\\' . $server_safe . '\\' . $safe_database_name,
-            extends: 'MariaDB\Database',
-            namespace: $resource_ns . '\\' . $server_safe,
-            uses: ['\Approach\Resource\MariaDB'],
-            constants: [
-                "NAME = '" . $this->database . "'",
-                "DATABASE = '" . $this->database . "'",
-                "SERVER_NAME = '" . $this->server->label . "'",
-                "RESOURCE_PROTO = 'MariaDB'",
-                "SERVER_CLASS = '" . $resource_ns . '\\' . $server_safe . "'",
-                "RESOURCE_CLASS = '" . $resource_ns . "'",
-                "CONNECTOR_CLASS = '\Approach\Service\MariaDB\Connector" . "'",
-            ],
-            // properties: 	[],
-            // methods: 	[],
-        );
+        $classname = $resource_ns . '\\' . $server_safe . '\\' . $safe_database_name;
+        if(!class_exists($classname)){
+            $this->MintResourceClass(
+                path: $resource_root . DIRECTORY_SEPARATOR . $server_safe . DIRECTORY_SEPARATOR . $safe_database_name . '.php',
+                class: $resource_ns . '\\' . $server_safe . '\\' . $safe_database_name,
+                extends: 'MariaDB\Database',
+                namespace: $resource_ns . '\\' . $server_safe,
+                uses: ['\Approach\Resource\MariaDB'],
+                constants: [
+                    "NAME = '" . $this->database . "'",
+                    "DATABASE = '" . $this->database . "'",
+                    "SERVER_NAME = '" . $this->server->label . "'",
+                    "RESOURCE_PROTO = 'MariaDB'",
+                    "SERVER_CLASS = '" . $resource_ns . '\\' . $server_safe . "'",
+                    "RESOURCE_CLASS = '" . $resource_ns . "'",
+                    "CONNECTOR_CLASS = '\Approach\Service\MariaDB\Connector" . "'",
+                ],
+                // properties: 	[],
+                // methods: 	[],
+            );
+        }
 
         // Discover the tables
         $tables = $this->GetTableList();
@@ -428,21 +431,23 @@ class Database extends Resource
                 resource_class: 'MariaDB' . '\\' . $server_safe . '\\' . $safe_database_name . '\\' . $table_safe,
             );
 
-            static::__update_composer_autoloader(
-                resource_root: NULL,
-                resource_class: 'MariaDB' . '\\' . $server_safe . '\\' . $safe_database_name . '\\' . $table_safe . '_user_trait',
-            );
+ 
 
             require_once $resource_root . DIRECTORY_SEPARATOR . $server_safe . DIRECTORY_SEPARATOR . $safe_database_name . DIRECTORY_SEPARATOR . $table_safe . '.php';
 
             $this->nodes[$table_safe] = new $classname(name: $table['TABLE_NAME'], database: $this);
             $this->nodes[$table_safe]->discover();
             
-            $f = fopen('some1.json', 'w');
-            fwrite($f, json_encode($this->nodes[$table_safe], JSON_PRETTY_PRINT));
-            // exit(1);
+            discoverable::define(caller: $this->nodes[$table_safe]);
 
-            static::define(caller: $this->nodes[$table_safe]);
+            // static::__update_composer_autoloader(
+            //     resource_root: NULL,
+            //     resource_class: 'MariaDB' . '\\' . $server_safe . '\\' . $safe_database_name . '\\' . 'user_trait',
+            // );
+            // static::__update_composer_autoloader(
+            //     resource_root: NULL,
+            //     resource_class: 'MariaDB' . '\\' . $server_safe . '\\' . $safe_database_name . '\\' . 'profile',
+            // );
         }
 
         /*

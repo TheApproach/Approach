@@ -3,7 +3,7 @@
 namespace Approach\Resource\MariaDB\Aspect;
 
 use \Approach\Resource\Aspect\discover;
-use \Approach\Resource\discoverability as resource_discoverability;
+use \Approach\Resource\discoverability as discoverability;
 use \Approach\nullstate;
 use Approach\path;
 use Approach\Resource\Resource;
@@ -26,7 +26,7 @@ use PhpParser\Node\Stmt\Continue_;
 
 class Table extends discover
 {
-    use resource_discoverability;
+    use discoverability;
 
     public static function get_resource_directory()
     {
@@ -477,7 +477,6 @@ class Table extends discover
     // {			
     // 	$table = $caller->name;
     // 	echo 'Defining profile for MariaDB://' . $caller::SERVER_NAME . '/' . $caller::DATABASE_NAME . '/' . $table . PHP_EOL;
-    //     $f = fopen('some.json', 'w');
     // 	/*echo 'Info: ' . var_export($info) . PHP_EOL;*/
 
     //     foreach($info as $key => $config){
