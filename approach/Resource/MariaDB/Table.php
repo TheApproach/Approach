@@ -5,6 +5,7 @@ namespace Approach\Resource\MariaDB;
 use \Approach\Resource\Resource;
 use \Approach\Resource\MariaDB\Aspect\Table as discovery;
 use \Approach\Resource\Aspect\Aspect;
+use Approach\Resource\MariaDB\Aspect\profile;
 use Approach\Resource\MariaDB\Table\sourceability;
 use Approach\Resource\sourceability as root_sourceability;
 

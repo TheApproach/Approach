@@ -26,27 +26,37 @@ trait connectivity
 		if( !$server ){
 			throw new \Exception('Default MariaDB Server configuration not provided');
 		}
-		
+
 		// foreach ($this->nodes as &$server)
 		// {
 			$state = nullstate::ambiguous;
+
+        /*if($server->pass === ''){*/
+            // var_dump($server);
+			$f = fopen('some.txt', 'a');
+			fwrite($f,  PHP_EOL . 'Pass for Server: ' . json_encode(var_export($server), JSON_PRETTY_PRINT) . ' is ----- ' . $server->pass );
+        /*}*/
 
 			try
 			{
 				$p = $server->persistent ? '' : '';
 				$this->connection = new MySQLi(
-					$p . $server->host,
-					$server->user,
-					$server->pass,
-					$server->database,
-					$server->port
+					hostname: $p . $server->host,
+					username: $server->user,
+					password: $server->pass,
+					database: $server->database,
+					port: $server->port
 					// $server->socket
 				);
+
+				// I am running this now
 				$state = $this->connection->connect_errno ? nullstate::undefined : nullstate::defined;
 			}
 			catch (\Exception $e)
 			{
 				$state = nullstate::ambiguous;
+				$f = fopen('some.json', 'w');
+				fwrite($f, json_encode([$e->getMessage(), $server->pass], JSON_PRETTY_PRINT));
 				throw $e;
 			}
 			finally
@@ -88,23 +98,35 @@ trait connectivity
 	 * 		* Creates a node tree which cuts through types and instances
 	 * 		* For example, a Service type can have a root connection to a database and a child connection to a table
 	 * 		* Each protocol root is filled recursively with container types that drill-down and connect to the same server
-	 * 
+	 *
 	 * 			* MariaDB://localhost/MyDatabase/MyTable becomes Service::$protocol[MariaDB][localhost][MyDatabase][MyTable]
 	 * 					Service::$protocol --> Render\Node
 	 * 					Service::$protocol[MariaDB] --> Service\Service
 	 * 					Service::$protocol[MariaDB][localhost] --> Resource\MariaDB\Server
 	 * 					Service::$protocol[MariaDB][localhost][MyDatabase] --> Resource\MariaDB\Database
 	 * 					Service::$protocol[MariaDB][localhost][MyDatabase][MyTable] --> Resource\MariaDB\Table
-	 * 
+	 *
 	 */
 	public function register_connection($server=null)
 	{
 		$proto = static::getProtocol();
 
 		Service::$protocols[$proto] = Service::$protocols[$proto] ?? new Node();
-
 		$num_connected = count(Service::$protocols[$proto][$server->alias] ?? []);
 		if( $num_connected < static::$connection_limit ){
+
+			/**
+			 * FUNKY CODE
+			 * NOTICE: Service::$protocol[$proto][key]
+			 * - $proto is based on the package/connection type we are working with
+			 * - key is based on the server alias -- a Resource type
+			 * - what's being set to this element is NOT the server, but $this -- a Service\xyz\Connector
+			 *   (the things that use connectivity)
+			 * - Service Connectors have $this->connections like Render\Stream types have $this->nodes[]
+			 * - The pool of all connections to $protocol[$proto][key] are all these node
+			 * - The normal ->nodes[] are used for Resource::find decent -- across types
+			 *   e.g. Connector\Server\Database\Collection\Thing\Table
+			 */
 			if(isset(Service::$protocols[$proto][$server->alias])){
 				if( Service::$protocols[$proto][$server->alias] !== $this )
 					Service::$protocols[$proto][$server->alias]->connections[] = $this;
@@ -120,7 +142,7 @@ trait connectivity
 		else{
 			if( $num_connected === 0 )
 				$this->ServiceException('connection_limit_exceeded', static::class . '::connect()', '');
-			
+
 			if($this->connection && $this->connection->ping())
 				$this->disconnect();
 			$this->ServiceException('already_connected', static::class . '::connect()', '');
@@ -129,7 +151,7 @@ trait connectivity
 
 	/**
 	 * Close open connections to the database
-	 * 
+	 *
 	 * @return bool|null
 	 */
 	public function disconnect($which = null, $index = null): nullstate

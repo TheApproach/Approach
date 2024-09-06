@@ -58,6 +58,7 @@ use Approach\Resource\Aspect\aspects;
 use Approach\Resource\Aspect\operation;
 use Approach\Resource\MariaDB\Server;
 use Approach\Resource\Resource;
+use Approach\Resource\MariaDB\Aspect\profile;
 
 use Approach\Resource\MariaDB\Aspect\Table as discoverable;
 use Approach\path;

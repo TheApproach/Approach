@@ -4,6 +4,7 @@ namespace Approach\Resource\MariaDB\Aspect;
 
 use \Approach\Resource\Aspect\discover;
 use Approach\Scope;
+use Approach\Resource\MariaDB\Aspect\profile;
 
 /**
  * Server		- defines the types of aspects MariaDB\Server can have
@@ -33,9 +34,6 @@ class Server extends discover
 			'PERSISTENT',
 			'CONNECTOR_CLASS',
 		];
-
-		// $f = fopen('some.json', 'w');
-		// fwrite($f, json_encode(get_class_vars($caller::class), JSON_PRETTY_PRINT));
 
 		$data = [];
 

@@ -24,7 +24,7 @@ class quality extends Container
 {
     const _index_map        = 0;
     const _case_map            = 1;
-    const label                = 2;
+    const label                = 2; 
     const description        = 3;
     const keywords            = 4;
     const children            = 5;
@@ -51,6 +51,17 @@ class quality extends Container
         else                 return static::_approach_quality_profile_[self::_index_map][strtolower($case)]     ?? false;
     }
 
+    /*
+     * cases() - Return an array of the enum's cases
+	 * @return array
+	 */
+
+	public static function cases()
+	{
+		return array_values(static::_approach_quality_profile_[self::_case_map]);
+	}
+
+    
     public static function getType($case = null)
     {
         if (!is_int($case)) {
@@ -101,61 +112,65 @@ class quality extends Container
     }
 
 
-    public static function getProfile($field, $what = null)
+    public static function getProfile($which, $what = null)
     {
-        $constants = null;
+        $info = null;
         switch ($what) {
-            case self::label:
-                $constants = static::_approach_quality_profile_[self::label][static::match($field)];
+            case self::label: 
+                $info = static::_approach_quality_profile_[self::label][static::match($which)];
                 break;
             case self::type:
-                $constants = static::getType($field);
+                $info = static::getType($which);
                 break;
-            default:
-                $constants = [];
-                foreach (static::getProfileProperties() as $key => $value) {
-                    $constants[$key] = static::getProfile($field, $key);
+            case null:
+                $info = [];
+                foreach (static::getProfileProperties() as $property => $property_index) {
+                    $info[$property] = static::getProfile($which, $property);
                 }
                 break;
+            default:
+                $info = [];
+                break;
         }
+        return $info;
     }
 
-    public static function getDefault($field)
+    public static function getDefault($which)
     {
         return null;
     }
 
-    public static function getSourceType($field)
+    public static function getSourceType($which)
     {
         return null;
     }
 
-    public static function getSourceDefault($field)
+    public static function getSourceDefault($which)
     {
         return null;
     }
 
-    public static function isNullable($field)
+    public static function isNullable($which)
     {
         return null;
     }
 
-    public static function getDescription($field)
+    public static function getDescription($which)
     {
         return null;
     }
 
-    public static function isAccessor($field)
+    public static function isAccessor($which)
     {
         return null;
     }
 
-    public static function getReferenceByAccessor($field)
+    public static function getReferenceByAccessor($which)
     {
         return null;
     }
 
-    public static function getPrimaryAccessor($field)
+    public static function getPrimaryAccessor($which)
     {
         return null;
     }

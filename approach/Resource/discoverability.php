@@ -422,7 +422,7 @@ trait discoverability
 			$uses
 			. PHP_EOL . PHP_EOL;
 
-		$php .= 'trait profile' . PHP_EOL;
+		$php .= 'class profile' . PHP_EOL;
 		$php .=  '{' . PHP_EOL;
 
 		// $php .= 'static $source = \'' . /* this used to be $table->name but not everything has a ->name */ . '\';' .  PHP_EOL;
@@ -446,16 +446,23 @@ trait discoverability
 		// 	'getProfileProperties'
 		// ];
 
-		foreach(static::$aspect_metadata as $aspect => $matches){
-			foreach ($matches as $match) {
-			// foreach ($info as $aspect => $list) {
-				// if (count($list) == 0) continue;
-				if( empty($info[$aspect]) ) continue; // if there was no info for this aspect, skip its functions
-				$uc_aspect = ucfirst($aspect);
-				$php .= 'public static function ' . $aspect . '_' . $match . '($what){	return Self' . $uc_aspect . '::match( $what );	}' . PHP_EOL;
-				// $php .= 'public static function ' . $aspect . '_' . $match . '($what){	return Self' . $uc_aspect . '::' . ucfirst($match) . '($what);	}' . PHP_EOL;
+		$toMint = [ 'GetCases' => '_case_map', 'GetIndices' => '_index_map'];
+		
+		$php .= 'public static function getProfile(){' . PHP_EOL . "\t" . 'return static::$profile;' . PHP_EOL . '}' . PHP_EOL;
+
+		foreach($toMint as $label => $mint){
+			$php .= 'public static function ' . $label . '(){' . PHP_EOL . "\t" . 'return [' . PHP_EOL; 
+			foreach(static::$aspect_metadata as $aspect => $matches){
+				// foreach ($matches as $match) {
+				// foreach ($info as $aspect => $list) {
+					// if (count($list) == 0) continue;
+					if( empty($info[$aspect]) ) continue; // if there was no info for this aspect, skip its functions
+					$uc_aspect = ucfirst($aspect);
+					// $php .= 'public static function ' . $aspect . '_' . $match . '($what){	return Self' . $uc_aspect . '::match( $what );	}' . PHP_EOL;
+					$php .= "\t\t" . 'Aspect::' . $aspect . ' => ' . 'Self' . $uc_aspect . '::' . $mint . ',' . PHP_EOL;
+				// }
 			}
-			$php .= PHP_EOL . PHP_EOL;
+			$php .= "\t" . '];' . PHP_EOL . '}' . PHP_EOL;
 		}
 
 		$php .= PHP_EOL . '}' . PHP_EOL;

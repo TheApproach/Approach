@@ -301,7 +301,7 @@ class Table extends discover
         // 	$references[$row['COLUMN_NAME']][] = $row;
         // }
 
-        return $references;
+        return $references; 
     }
 
     public static function define_qualities($caller): false|array
