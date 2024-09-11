@@ -301,7 +301,7 @@ class Table extends discover
         // 	$references[$row['COLUMN_NAME']][] = $row;
         // }
 
-        return $references; 
+        return $references;
     }
 
     public static function define_qualities($caller): false|array
@@ -384,6 +384,43 @@ class Table extends discover
         return ['symbols' => $symbols, 'data' => $data, 'path' => $caller::get_aspect_directory()];
     }
 
+
+    private static function convert_field_data($data)
+    {
+        //
+        $labels = $data['label'];  // There are N labels, one for each field detected
+        $field_arrays =    [
+            'label',
+            'type',
+            'default',
+            'source_type',
+            'source_default',
+            'nullable',
+            'description',
+            'constraint',
+            'accessor',
+            'reference_to',
+            'primary_accessor',
+        ];
+        $converted = [];
+
+        foreach ($labels as $i => $label) {   // field 0...N
+            foreach ($field_arrays as $key) {
+                if (!isset($data[$key])) {
+                    $converted[$label][$key] = null;
+                } elseif (!is_array($data[$key])) {
+                    $converted[$label][$key] = $data[$key];
+                } else {
+                    $converted[$label][$key] = $data[$key][$i];
+                }
+            }
+        }
+
+        /*echo 'Converted: ' . var_export($converted, true) . PHP_EOL;*/
+
+        return $converted;
+    }
+
     public static function define_fields($caller): false|array
     {
         $table = $caller->name;
@@ -410,14 +447,13 @@ class Table extends discover
         $data = [];
         $data = array_merge($data, static::equipFieldPropertyMetadata($symbols, $fields, $accessors, $keyProperties));
         $data = array_merge($data, static::equipReferenceToAccessors($symbols, $accessors));
+        // $f = fopen('some.json', 'w');
+        // fwrite($f, json_encode($data));
+        $data = static::convert_field_data($data);
 
-        // wait so won't it be just Aspect/place/place
-        // we also need the location === namespace not file name. hmm
-        $data['location'] = $caller::get_aspect_directory();
-        // MyProject/Resource/$package/		      /place/place/location.php discovered resource class (both)
-        // MyProject/Resource/$package/		      /place/place/location/$aspect.php old
-        // MyProject/Resource/$package/		Aspect/place/place/location/$aspect.php new
 
+        // $data at this point should be $data[$ukey][field_enum_concept] == value
+        // $data[FIELD_NAME][field::label]
         $classfile = static::get_table_classfile($caller);
         // remove ".php" from classfile name, add /field.php
 

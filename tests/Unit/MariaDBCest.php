@@ -79,9 +79,10 @@ class MariaDBCest
             host: 'localhost',  // Scope::GetDeploy( deploy::resource ),
             user: 'root',  // Scope::GetDeploy( deploy::resource_user ),
             port: 3306,
-            pass: 'NoobScience', 
+            pass: 'NoobScience',
             database: 'test',
-            label: 'MyData'
+            label: 'MyData',
+            // skip_connection: true
         );
     }
 
@@ -141,7 +142,7 @@ class MariaDBCest
 
     public function checkServerDiscovery(UnitTester $I)
     {
-        $this->server->discover();
+        /*$this->server->discover();*/
 
         // Check if the server has a php file at Scope::GetPath( path::project ) /Resource/
     }
@@ -152,12 +153,15 @@ class MariaDBCest
         // instead of this...
         // $server = new MyData(pass: 'NoobScience'); // or this
         // even though Resource::find() should I think work after at least a MyData has been connected hmm idk
-        $this->server::find('test/names[id: 0..100][id]');
+        $this->server->connector->disconnectAll();
+
+        $r = \MyProject\Resource\MariaDB\MyData::find('MariaDB://localhost/test/names[id: 0..100]');
+
         // okay let's try
         // $r->load();
     }
-    public function tryResouceFind(UnitTester $I)
-    {
-        $r = Resource::find('MariaDB://MyData/test/names[id: 0..100][id]');
-    }
+    /*public function tryResouceFind(UnitTester $I)*/
+    /*{*/
+    /*    $r = Resource::find('MariaDB://MyData/test/names[id: 0..100][id]');*/
+    /*}*/
 }

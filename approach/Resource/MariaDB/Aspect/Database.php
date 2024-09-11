@@ -67,8 +67,6 @@ class Database extends discover
 
     public static function define_qualities($caller)
     {
-        // okay but still when I print out get_class_vars($caller::class) it doesn't show the constants
-        // It shows a bunch of other stuff, but not the constants
         $symbols = [
             'NAME',
             'DATABASE',
@@ -79,19 +77,28 @@ class Database extends discover
             'CONNECTOR_CLASS',
         ];
 
-        $f = fopen('some.json', 'w');
-        fwrite($f, json_encode(get_class_vars($caller::class), JSON_PRETTY_PRINT));
-        fclose($f); // this was left open maybe related
-        // let me try again
-
         $data = [];
 
         foreach (get_class_vars($caller::class) as $key => $value) {
-            if (!isset($caller->{$key}) && defined($caller::class . '::' . $key)) {
-                $data[$key] = constant($caller::class . '::' . $key);
+            $ukey = strtoupper($key);
+            if (in_array($ukey, $symbols)) {
+                // label // just the label?
+                $data[$ukey]['label'] = $ukey;
+                $data[$ukey]['description'] = null;
+                $data[$ukey]['keywords'] = null;
+                $data[$ukey]['children'] = null;
+                $data[$ukey]['related'] = null;
+                $data[$ukey]['type'] = null;
+                $data[$ukey]['state'] = $caller->$key;
             }
         }
 
+        // var_export($data);
+        // exit();
+
+        // Gather anything else you want into $data from $caller->server->connection (mysqli) or json files etc here
+
         return ['symbols' => $symbols, 'data' => $data, 'path' => $caller::get_aspect_directory()];
     }
+
 }

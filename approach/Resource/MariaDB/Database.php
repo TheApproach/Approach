@@ -67,6 +67,12 @@ use Approach\Scope;
 
 class Database extends Resource
 {
+    public static $NAME;
+    public static $SERVER_NAME;
+    public static $RESOURCE_PROTO;
+    public static $SERVER_CLASS;
+    public static $RESOURCE_CLASS;
+    public static $CONNECTOR_CLASS;
     // use discoverability;
     // The table list. Aggregates all tables in the database and their metadata
     public array $tables = [];
@@ -102,7 +108,7 @@ class Database extends Resource
             $this->server = $server;
         } else {
             try {
-                $this->server = new $this->server_name;
+                $this->server = new $this->SERVER_CLASS;    // now this should be able to find its password
             } catch (\Throwable $e) {
                 try {
                     $this->server = Resource::find('MariaDB://' . $this->server_name);

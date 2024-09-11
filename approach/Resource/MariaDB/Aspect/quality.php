@@ -15,7 +15,7 @@ use MyProject\Resource\MariaDB\MyData\mysql\func;
  * @subpackage	Resource
  * @version		2.0.0
  * @category	Aspect
- * @category	Field
+ * @category	Quality
  * @category	Property
  * 
  */

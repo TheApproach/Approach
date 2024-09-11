@@ -40,20 +40,21 @@ class Table extends Resource
 
 	public function __construct(public $name = 'resources', public $database=null)
 	{
-		// Get the class constants and set them as properties if they are not already set
-		foreach (get_class_vars(static::class) as $key => $value) {
-			if (!isset($this->{$key}) && defined(static::class . '::' . $key)) {
-				$this->{$key} = constant(static::class . '::' . $key);
-			}
-		}
+		// // Get the class constants and set them as properties if they are not already set
+		// foreach (get_class_vars(static::class) as $key => $value) {
+		// 	if (!isset($this->{$key}) && defined(static::class . '::' . $key)) {
+		// 		$this->{$key} = constant(static::class . '::' . $key);
+		// 	}
+		// }
 
 		// Get an instance of the database
 		if ($database instanceof \Approach\Resource\MariaDB\Database) {
 			$this->database = $database;
-		} 
+		}  
 		else {
 			try{
-				$this->database = new $this->database_class;
+				// right right lol
+				$this->database = new $this->database_class;	// (Regarding Database.php "new $this->SERVER_CLASS")  this should also be able to find its password
 			}
 			catch (\Throwable $e) {
 				try {

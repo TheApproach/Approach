@@ -109,12 +109,20 @@ use \Approach\path;
 use \Approach\deploy;
 use \Approach\nullstate;
 use Approach\Resource\Aspect\Aspect;
+use Approach\Resource\MariaDB\Aspect\quality;
 use Approach\Resource\MariaDB\Aspect\profile;
 use Approach\runtime;
 use ReflectionClass;
 
-//use PHPUnit\Event\Runtime\PHP;
-
+// Discoverable Qualities
+const HOST_INDEX = 0;
+const USER_INDEX = 1;
+const PASS_INDEX = 2;
+const DATABASE_INDEX = 3;
+const PORT_INDEX = 4;
+const SOCKET_INDEX = 5;
+const PERSISTENT_INDEX = 6;
+	
 class Server extends Resource
 {
 	protected $pool = [];
@@ -157,32 +165,24 @@ class Server extends Resource
 	) {
 		$p = $this->persistent ? 'p:' : '';
 
-		// Check for any class constants which can be used as defaults
-		foreach (get_class_vars(static::class) as $key => $value) {
-			if (!isset($this->{$key}) && defined(static::class . '::' . $key)) {
-				$this->{$key} = constant(static::class . '::' . $key);
-			}
-        }
+		// // Check for any class constants which can be used as defaults
+		// foreach (get_class_vars(static::class) as $key => $value) {
+		// 	if (!isset($this->{$key}) && defined(static::class . '::' . $key)) {
+		// 		$this->{$key} = constant(static::class . '::' . $key);
+		// 	}
+        // }
 		
-		$profiles = $skip_profile ? [] : static::GetProfile();
+		$profile = $skip_profile ? [] : static::GetProfile();
 
-		// $fallbacks = []; 
-		// $forwarded_quality_match = 'fake stub'; 	// delete me 
-
-		// mass import quality fallbacks
-		// foreach($profile[Aspect::quality] as $key => $value ){
-		// 	$fallbacks[ $forwarded_quality_match($key) ] = $value;
+		// if(empty($this->pass)){
+		// 	 $this->pass = null;
 		// }
-
-		// self doesn't know the case map but static does
-		// probably some loops or something that set fallbacks keys
-
 		// Fallback Defaults
-		$this->host        = $this->host     ??	$fallbacks['host'] ?? Scope::GetDeploy(deploy::resource);
-		$this->user        = $this->user     ??	$fallbacks['user'] ?? Scope::GetDeploy(deploy::resource_user);
-		$this->pass        = $this->pass     ??	$fallbacks['pass'] ?? ini_get('mysqli.default_pw');
-		$this->port        = $this->port     ??	$fallbacks['port'] ?? ini_get('mysqli.default_port') ?? 3306;
-		$this->socket      = $this->socket   ??	$fallbacks['socket'] ?? ini_get('mysqli.default_socket') ?? '/var/lib/mysql/mysql.sock';
+		$this->host        = $this->host     ??	$profile[Aspect::quality][HOST_INDEX][quality::state] 	?? Scope::GetDeploy(deploy::resource);
+		$this->user        = $this->user     ??	$profile[Aspect::quality][USER_INDEX][quality::state] 	?? Scope::GetDeploy(deploy::resource_user);
+		$this->pass        = $this->pass     ??	$profile[Aspect::quality][PASS_INDEX][quality::state] 	?? ini_get('mysqli.default_pw');
+		$this->port        = $this->port     ??	$profile[Aspect::quality][PORT_INDEX][quality::state] 	?? ini_get('mysqli.default_port') ?? 3306;
+		$this->socket      = $this->socket   ??	$profile[Aspect::quality][SOCKET_INDEX][quality::state] 	?? ini_get('mysqli.default_socket') ?? '/var/lib/mysql/mysql.sock';
 
 		$this->label       = $p . $this->label ?? $p . $this->get_fallback_label();
 		$this->set_render_id();
@@ -198,12 +198,12 @@ class Server extends Resource
 		/* Check if we should skip this connection or not */
 		if (!$this->skip_connection) {
 			$this->connect(
-				$host,
-				$user,
-				$pass,
+				$this->host,
+				$this->user,
+				$this->pass,
 				$database,
-				$port,
-				$socket
+				$this->port,
+				$this->socket
 			);
 			// Check if we are in a galera cluster or not
 			if ($this->is_galera === null) {

@@ -7,6 +7,8 @@ use \Approach\nullstate;
 use \Approach\runtime;
 use \Approach\Resource\Aspect\Aspect;
 use \Approach\Resource\Aspect\discover;
+use \Approach\Resource\Aspect\quality;
+use \Approach\Resource\Aspect\field;
 
 trait discoverability
 {
@@ -355,6 +357,9 @@ trait discoverability
 				parent::class::define($which);
 			}
 		}
+
+		// var_export($config);
+		// exit();
 	}
 
 	public static function define_containers($caller)
@@ -448,7 +453,7 @@ trait discoverability
 
 		$toMint = [ 'GetCases' => '_case_map', 'GetIndices' => '_index_map'];
 		
-		$php .= 'public static function getProfile(){' . PHP_EOL . "\t" . 'return static::$profile;' . PHP_EOL . '}' . PHP_EOL;
+		$php .= 'public static function GetProfile(){' . PHP_EOL . "\t" . 'return static::$profile;' . PHP_EOL . '}' . PHP_EOL;
 
 		foreach($toMint as $label => $mint){
 			$php .= 'public static function ' . $label . '(){' . PHP_EOL . "\t" . 'return [' . PHP_EOL; 
@@ -492,7 +497,7 @@ trait discoverability
 				foreach (static::$aspect_metadata[$aspect] as $key ) {
 					$line = '';
 					if ($key != '_case_map') {
-						$line = $aspect . '_meta::' . $key . ' => Self' . $uc_aspect . '::' . $key . '[ Self' . $uc_aspect . '::' . $label . ' ],';
+						$line = $aspect . '_meta::' . $key . ' => Self' . $uc_aspect . '::_approach_' . $aspect . '_profile_' . '[ ' . $aspect . '_meta' . '::' . $key . ' ][ Self' . $uc_aspect . '::' . $label . '],';
 					}
 					if($line != ''){
 
@@ -560,7 +565,7 @@ trait discoverability
 		$php = '';
 
 		$php .= PHP_EOL . '// Discovered ' . $uc_aspect . PHP_EOL;
-		$symbols = array_merge(['_case_map', '_index_map'], $config['symbols']);
+		$symbols = $config['symbols'];
 		// $symbols = $config['symbols'];
 
 		$indices = [];
@@ -574,15 +579,20 @@ trait discoverability
 		$php .= PHP_EOL . PHP_EOL . '// Discovered ' . $uc_aspect . ' Metadata' . PHP_EOL;
 		$php .= "\t" . 'const _approach_' . $lc_aspect . '_profile_ = [' . PHP_EOL;
 
-        foreach ($config['data'] as $key => $data) {
-            if(!is_array($data)) continue;
+		// var_dump(($config['data']));
+		$meta = static::$aspect_metadata[$lc_aspect];
+        foreach ($meta as $key) {
 			$php .= "\t\t" . $package . '_' . $lc_aspect . '::' . $key . ' => [' . PHP_EOL;
-			foreach ($data as $i => $value) {
-				$prefix = '';
-				if ($key != '_case_map') {
-					$prefix = 'self::' . $symbols[$i] . ' => ';
+			foreach ($symbols as $i => $symbol) {
+				$prefix = 'self::' . $symbol . ' => ';
+				$usymbol = strtoupper($symbol);
+
+				if( key_exists($usymbol, $config['data']) || key_exists(strtolower($symbol), $config['data']) || key_exists($symbol, $config['data'])  ){
+					$data = $config['data'][$symbol][$key];
+					// foreach($config['data'][$usymbol] as $data){
+					$php .= "\t\t\t" . $prefix . var_export($data, true) . ', ' . PHP_EOL;
+					// }
 				}
-				$php .= "\t\t\t" . $prefix . var_export($value, true) . ', ' . PHP_EOL;
 			}
 			$php .= "\t\t" . '],' . PHP_EOL;
 		}

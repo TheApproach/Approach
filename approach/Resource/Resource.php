@@ -97,32 +97,17 @@ class Resource extends RenderNode implements Stream
         /** Alter resource selection via Aspects	*/
         //TODO: Make to Aspect
         $this->__approach_resource_context = [];
-        $this->__approach_resource_context[locate] =
-            $where ?? new RenderNode(content: '/');
-        $this->__approach_resource_context[pick] = new Aspect();
-        $this->__approach_resource_context[sort] = new Aspect();
-        $this->__approach_resource_context[weigh] = new Aspect();
-        $this->__approach_resource_context[sift] = new Aspect();
-        $this->__approach_resource_context[divide] =
-            new Aspect();
-        $this->__approach_resource_context[filter] =
-            new Aspect();
+        $this->__approach_resource_context[locate]  = $where ?? new RenderNode(content: '/');
+        $this->__approach_resource_context[pick]    = []; //new Aspect();
+        $this->__approach_resource_context[sort]    = []; //new Aspect();
+        $this->__approach_resource_context[weigh]   = []; //new Aspect();
+        $this->__approach_resource_context[sift]    = []; //new Aspect();
+        $this->__approach_resource_context[divide]  = []; //new Aspect();
+        $this->__approach_resource_context[filter]  = []; //new Aspect();
 
         // $this->parseUri($where);
     }
 
-    // public function define()
-    // {
-    // 	$aspects = aspects::manifest($this);
-
-    // 	// $this->aspects = $aspects;
-    // 	// $this->aspects[aspects::container]->nodes = $aspects;
-    // 	// $this->aspects[aspects::container]->nodes[aspects::container]->nodes = $aspects;
-    // 	// $this->aspects[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes = $aspects;
-    // 	// $this->aspects[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes = $aspects;
-    // 	// $this->aspects[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes[aspects::container]->nodes = $aspects;
-    // 	// $this->aspects[aspects::container]->nodes[aspect
-    // }
 
     public static function find(
         string $where = '/',
@@ -150,6 +135,14 @@ class Resource extends RenderNode implements Stream
         }
 
         $r->__approach_resource_context = $res['context'];
+
+
+        echo 'Result of parsing: '.$where.PHP_EOL;
+        echo 'Picks:'. PHP_EOL;
+        var_dump($res['context'][pick]);
+        echo PHP_EOL.'Sifts:' . PHP_EOL;
+        var_dump($res['context'][sift]);
+
         return $r;
     }
 
@@ -329,9 +322,8 @@ use ' . $profilePath . '\\' . $class . '\\profile' . ' as profile;
 
 trait user_trait
 {
-    static $_approach_resource_profile_;
     public static function GetProfile(){ 
-        static::$_approach_resource_profile_ = profile::GetProfile();
+        return profile::GetProfile();
     }
 	/**** User Trait ****
 	 *
@@ -765,7 +757,7 @@ trait user_trait
         return $result;
     }
 
-    static function parseRange($range): array|bool
+    static function parseRange($range, &$context): array|bool
     {
         $range = trim($range);
 
@@ -778,7 +770,7 @@ trait user_trait
 
         foreach ($parts as $part) {
             $part = trim($part);
-            $parsedPart = self::parsePart($part);
+            $parsedPart = self::parsePart($part, $context);
             $result[] = $parsedPart;
         }
 
@@ -816,7 +808,7 @@ trait user_trait
         return $tail;
     }
 
-    static function parsePart($part): array
+    static function parsePart($part, &$context): array
     {
         // Check for AND, OR, HAS
         $logicalOps = [self::$Operations[self::_AND_], self::$Operations[self::_OR_], self::$Operations[self::_HAS_]];
@@ -825,10 +817,10 @@ trait user_trait
                 $left = trim(substr($part, 0, $pos));
                 $right = trim(substr($part, $pos + strlen($op)));
                 if (self::isRange($left)) {
-                    $left = self::parseRange($left);
+                    $left = self::parseRange($left, $context);
                 }
                 if (self::isRange($right)) {
-                    $right = self::parseRange($right);
+                    $right = self::parseRange($right, $context);
                 }
 
                 //                $context[sift][] = [$left, $op, $right];
@@ -846,12 +838,12 @@ trait user_trait
                     if (is_string($value)) {
                         $value = substr($value, 1, -1);
                         if (self::isRange($value)) {
-                            $value = self::parseRange($value);
+                            $value = self::parseRange($value, $context);
                         }
                     } else {
                         $value[0] = substr($value[0], 1, -1);
                         if (self::isRange($value[0])) {
-                            $value = self::parseRange($value[0]);
+                            $value = self::parseRange($value[0], $context);
                         }
                     }
 
@@ -901,7 +893,7 @@ trait user_trait
         return $result;
     }
 
-    public static function parsePath(string $path): array|string
+    public static function parsePath(string $path, &$context): array|string
     {
         $first_bracket = strpos($path, self::$Operations[self::OPEN_INDEX]);
 
@@ -916,7 +908,7 @@ trait user_trait
         $res['ranges'] = [];
 
         foreach ($ranges as $range) {
-            $res['ranges'][] = self::parseRange($range);
+            $res['ranges'][] = self::parseRange($range, $context);
         }
 
         return $res;
@@ -961,13 +953,13 @@ trait user_trait
      */
     public static function parseUri($url): array
     {
-        echo static::get_aspect_namespace() . PHP_EOL;
+        /*echo static::get_aspect_namespace() . PHP_EOL;*/
 
         $primary = parse_url($url);
         $res = [];
         $context = [];
-        $context[pick] = new Aspect();
-        $context[sift] = new Aspect();
+        $context[pick] = [];
+        $context[sift] = [];
 
         $url = '';
 
@@ -1001,15 +993,18 @@ trait user_trait
 
         foreach ($paths as $path) {
             $url .= '/' . self::tillFirstDelim($path);
-            $parsed = self::parsePath($path);
+            $parsed = self::parsePath($path, $context);
             $res['paths'][] = $parsed;
             if (is_array($parsed)) {
                 foreach ($parsed['ranges'] as $p) {
                     foreach ($p as $range) {
                         if (count($range) == 1)
-                            $context[pick]->nodes[] = new Aspect(type: Aspect::container, content: $range[0]);
+                            $context[pick][] = $range[0];
                         else
-                            $context[sift][] = $range;
+                        // oh that was only temporaray for testing...it need no be like that it would be okay I think
+                        // or we can probably just decode it while decomposing
+                        // would make it easier for us
+                            $context[sift][] = json_encode($range, true);
                     }
                 }
             }
