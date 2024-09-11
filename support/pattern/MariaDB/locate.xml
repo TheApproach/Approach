@@ -4,7 +4,7 @@
 SELECT [@ picks @]
 	<!-- node Render:type="IfTrue" condition="[@ weight_aspects @]" -->
 	, (case
-		<node render:type="Loop" what="[@ weight_aspects @]" as="aspect">
+		<node render:type="Loop" what="[@ weight_criteria @]" as="aspect">
 			when [@ aspect.field @] [@ aspect.operator @] [@ aspect.value @] then [@ aspect.weight @]
 		</node>
 		else 1
@@ -17,8 +17,8 @@ WHERE
 		(
 			TRUE 
 	    		<node render:type="Conditional" condition="[@ need @]">
-				<node render:type="Loop" what="[@ weight_aspects @]" as="aspect">
-			AND ( [@ need.field @] [@ need.operator @] [@ need.value @] )
+				<node render:type="Loop" what="[@ need_criteria @]" as="needs">
+			AND ( [@ needs.field @] [@ needs.operator @] [@ needs.value @] )
 				</node>
 			</node>
 		)
