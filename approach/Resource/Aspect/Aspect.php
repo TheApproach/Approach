@@ -24,6 +24,7 @@ class Aspect extends Container
 	final const identity				= 7;
 	final const roles					= 8;
 	final const state					= 9;
+	final const access					= 10;
 
 	const _index_map = [
 		'container'				=> self::container,

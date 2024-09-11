@@ -7,22 +7,22 @@ use \Approach\nullstate;
 use \Approach\runtime;
 use \Approach\Resource\Aspect\Aspect;
 use \Approach\Resource\Aspect\discover;
-
-
+use \Approach\Resource\Aspect\quality;
+use \Approach\Resource\Aspect\field;
 
 trait discoverability
 {
 	static $aspect_metadata = [
-		'location'	=>	[
-			'proto',
-			'prefix',
-			'where',
-			'relative',
-			'is_recursive',
-			'requires_proto',
-			'requires_prefix',
-		],
-		'field'		=>	[
+		// 'location'	=>	[
+		// 	'proto',
+		// 	'prefix',
+		// 	'where',
+		// 	'relative',
+		// 	'is_recursive',
+		// 	'requires_proto',
+		// 	'requires_prefix',
+		// ],
+		'field'		=>	[	
 			'label',
 			'type',
 			'default',
@@ -125,29 +125,29 @@ trait discoverability
 	* 		0 => [	'object' => $calling_scope_a	],
 	* 		1 => [	'object' => $calling_scope_b	]
 	* 	]
-	* 
-	* We know the second element is the object calling define(), because the 
+	*
+	* We know the second element is the object calling define(), because the
 	* first element holds this define() method.
-	* 
+	*
 	* We do this to grab a reference to the SomeType\Source, for example MariaDB\SomeServer or MyEngine\GPU0,
 	* calling this Collection's define() methods through the aspect system. ie:
-	* 
+	*
 	* $source calls discover()
 	* 	$source->collection calls discover()
 	* 		$collection->discover calls Aspect\Collection::define()
 	* 		  - $caller is the $collection object
 	* 		  - We are not concerned with reflection costs here,
 	* 		    this is only called seldomly on startup/updates.
-	*	
+	*
 	* This is a good example of how the aspect system is intended to work.
 	* Much of this is still in flux, but the general idea is that Aspects
 	* will keep properties and methods *out* of the Resource class, especially
 	* for leaf Resources, and instead use the aspect system to define them.
-	* 
-	* Doing this allows us to keep the Resource class as a simple container to track connectivity 
-	* and sharing which can be extended by the user, and always has a payload. Aspects can be 
+	*
+	* Doing this allows us to keep the Resource class as a simple container to track connectivity
+	* and sharing which can be extended by the user, and always has a payload. Aspects can be
 	* further defined by the user, but especially play a role for library developers.
-	* 
+	*
 	* The aspect system is intended to be used for:
 	* 	- defining aspects of a Resource class
 	* 	- defining aspects of a Resource instance
@@ -169,7 +169,7 @@ trait discoverability
 	*
 	* Each of these top-level categories may have domain-specific sub-categories, supported by the
 	* system or libraries. For example, the MariaDB library may have a sub-category of 'table' for
-	* the 'container' category, and a sub-category of 'column' for the 'field' category. It could 
+	* the 'container' category, and a sub-category of 'column' for the 'field' category. It could
 	* equivalently simply use the field category for fields and the container category for tables.
 	*
 	* Constraining resource definitions to these categories allows tooling to reach full-coverage
@@ -193,12 +193,12 @@ trait discoverability
 	* the creation of generic tools that can be used across domains. We consider "all system resources"
 	* to be a heatmap distributed across an N-dimensional space, where each dimension is a connection/type pair. The heatmap
 	* is a function of the number of resources in each taxonomy, recursively.
-	* 
-	* TL;DR: 
+	*
+	* TL;DR:
 	* - Resources come from Sources. They are *re* - sourced, from some source media or system.
 	* - This is very vague, so requires constraints to cover all possible resources.
 	* - We strapped those onto Sources, Instances of a Type available at such a source.
-	* - URLs are sufficient 
+	* - URLs are sufficient
 			- ResourceType://Source (eg: MariaDB://MyServer, File://home/user/file.txt, MyService://webhook.example.com)
 			- ResourceType://Source/Type/Type.. (eg: MariaDB://MyServer/MyDatabase, File://home/user/file.txt/line[3]/char[0], MyService://webhook.example.com/MyEndpoint)
 	* - What is available depends on a Resources location discovery, which is a function of the Resource's Aspects.
@@ -214,14 +214,14 @@ trait discoverability
 	* 	- Resource\MyResource->weigh()
 	* 	- Resource\MyResource->divide()
 	* 	- Resource\MyResource->filter()
-	* 
+	*
 	* If you can accomplish this one herculean task, you will have created a library that can be used
 	* by any Resource, and can be used to create generic tools that can be used across domains. Your
 	* resource system will be completely scalable in any Approach context, and will be able to be
 	* used by any project using Approach.
 	*
 	* acquire(), transport(), promise(), and bestow()
-	* pull(), push(), and exchange() 
+	* pull(), push(), and exchange()
 	* load(), save(), are all defined in the Resource\sourceability trait.
 	*
 	* If a Resource is both locatable and sourceable via its aspects, it can be used
@@ -237,11 +237,11 @@ trait discoverability
 	 * Discover the aspects of a Resource class
 	 * Generates Aspect classes for a given Resource class, updating class definition files
 	 * and meta-programming the Resource class to use Aspect classes
-	 * 
+	 *
 	 * @param null|\Stringable|string|Resource $resource - The resource to discover, or null for the context we are in
-	 * 
+	 *
 	 * @return array - An array of Aspect objects
-	 * 
+	 *
 	 */
 	public static function discover(null|\Stringable|string|Resource $resource = null)
 	{
@@ -276,9 +276,9 @@ trait discoverability
 	 * Define the aspects of a Resource class
 	 * Generates Aspect classes for a given Resource class, updating class definition files
 	 * and meta-programming the Resource class to use Aspect classes
-	 * 
+	 *
 	 * @param which $which - Which aspect to define, or null for all
-	 * 
+	 *
 	 */
 
 	public static function define($caller = null, $which = null): void
@@ -290,7 +290,7 @@ trait discoverability
 
 		switch ($which) {
 			case discover::location:
-				$config['location'] = static::define_locations($caller);
+				// $config['location'] = static::define_locations($caller);
 				break;
 			case discover::operation:
 				$config['operation'] = static::define_operations($caller);
@@ -314,7 +314,7 @@ trait discoverability
 				$config['access'] = static::define_access($caller);
 				break;
 			case null:
-				$config['location'] = static::define_locations($caller);
+				/*$config['location'] = static::define_locations($caller);*/
 				$config['operation'] = static::define_operations($caller);
 				$config['field'] = static::define_fields($caller);
 				$config['quality'] = static::define_qualities($caller);
@@ -332,23 +332,23 @@ trait discoverability
 			// [filename] expected to hold value of file to be minted
 			// [which] passthru
 			// [package] base package of $caller
-			
+
 			if(!isset($aspect['symbols']) || !is_array($aspect['symbols'])){
 				echo PHP_EOL. $which. ' minting failure: ';
 				/*var_export($aspect);*/
 				continue;
 			}
-			
+
 			$aspect['ns'] = $caller::get_aspect_namespace();
 			$aspect['package'] = $caller::get_package_name();
 			$aspect['which'] = $which;
-			$aspect['filename'] = $caller::get_aspect_directory() . DIRECTORY_SEPARATOR . $which . '.php'; 
+			$aspect['filename'] = $caller::get_aspect_directory() . DIRECTORY_SEPARATOR . $which . '.php';
             $aspect['directory'] = $caller::get_aspect_directory();
 
 			static::MintAspect($aspect, $caller);
 		}
 
-		static::define_profile($caller, $config); //, $path, $location); 
+		static::define_profile($caller, $config); //, $path, $location);
 
 		Scope::$Active->mode = runtime::debug;
 		if( !Scope::$Active->mode !== runtime::debug )
@@ -357,6 +357,9 @@ trait discoverability
 				parent::class::define($which);
 			}
 		}
+
+		// var_export($config);
+		// exit();
 	}
 
 	public static function define_containers($caller)
@@ -405,9 +408,6 @@ trait discoverability
 		$filename = $caller::get_aspect_directory() . 'profile.php';
 		// $table = $caller->name;
 
-        $f = fopen('some.json', 'w');
-        fwrite($f, $filename);
-
 		echo 'Defining profile for ' . $caller::class . PHP_EOL;
 
 		$uses = 'use \\Approach\\Resource\\Aspect\\Aspect;' . PHP_EOL;
@@ -427,7 +427,7 @@ trait discoverability
 			$uses
 			. PHP_EOL . PHP_EOL;
 
-		$php .= 'trait profile' . PHP_EOL;
+		$php .= 'class profile' . PHP_EOL;
 		$php .=  '{' . PHP_EOL;
 
 		// $php .= 'static $source = \'' . /* this used to be $table->name but not everything has a ->name */ . '\';' .  PHP_EOL;
@@ -437,27 +437,37 @@ trait discoverability
 
 		$php .= '];' . PHP_EOL;
 
-		$matches = [
-			'match',
-			'getType',
-			'getDefault',
-			'getSourceType',
-			'getSourceDefault',
-			'isNullable',
-			'getDescription',
-			'isAccessor',
-			'getReferenceByAccessor',
-			'getPrimaryAccessor',
-			'getProfileProperties'
-		];
+		// $matches = [
+		// 	'match',
+		// 	'getType',
+		// 	'getDefault',
+		// 	'getSourceType',
+		// 	'getSourceDefault',
+		// 	'isNullable',
+		// 	'getDescription',
+		// 	'isAccessor',
+		// 	'getReferenceByAccessor',
+		// 	'getPrimaryAccessor',
+		// 	'getProfileProperties'
+		// ];
 
-		foreach ($matches as $match) {
-			foreach ($info as $aspect => $list) {
-				if (count($list) == 0) continue;
-				$uc_aspect = ucfirst($aspect);
-				$php .= 'public static function ' . $aspect . '_' . $match . '($what){	return Self' . $uc_aspect . '::' . $match . '($what);	}' . PHP_EOL;
+		$toMint = [ 'GetCases' => '_case_map', 'GetIndices' => '_index_map'];
+		
+		$php .= 'public static function GetProfile(){' . PHP_EOL . "\t" . 'return static::$profile;' . PHP_EOL . '}' . PHP_EOL;
+
+		foreach($toMint as $label => $mint){
+			$php .= 'public static function ' . $label . '(){' . PHP_EOL . "\t" . 'return [' . PHP_EOL; 
+			foreach(static::$aspect_metadata as $aspect => $matches){
+				// foreach ($matches as $match) {
+				// foreach ($info as $aspect => $list) {
+					// if (count($list) == 0) continue;
+					if( empty($info[$aspect]) ) continue; // if there was no info for this aspect, skip its functions
+					$uc_aspect = ucfirst($aspect);
+					// $php .= 'public static function ' . $aspect . '_' . $match . '($what){	return Self' . $uc_aspect . '::match( $what );	}' . PHP_EOL;
+					$php .= "\t\t" . 'Aspect::' . $aspect . ' => ' . 'Self' . $uc_aspect . '::' . $mint . ',' . PHP_EOL;
+				// }
 			}
-			$php .= PHP_EOL . PHP_EOL;
+			$php .= "\t" . '];' . PHP_EOL . '}' . PHP_EOL;
 		}
 
 		$php .= PHP_EOL . '}' . PHP_EOL;
@@ -480,17 +490,17 @@ trait discoverability
 			$uc_aspect = ucfirst($aspect);
 			if (empty($list)) {
 				continue;
-			} 
+			}
 
-			foreach ($list['symbols'] as $label) { 
+			foreach ($list['symbols'] as $label) {
 				$php .= "\t\t" . 'Self' . $uc_aspect . '::' . $label . ' => [' . PHP_EOL;
 				foreach (static::$aspect_metadata[$aspect] as $key ) {
 					$line = '';
 					if ($key != '_case_map') {
-						$line = $aspect . '_meta::' . $key . ' => Self' . $uc_aspect . '::' . $key . '[ Self' . $uc_aspect . '::' . $label . ' ],';
+						$line = $aspect . '_meta::' . $key . ' => Self' . $uc_aspect . '::_approach_' . $aspect . '_profile_' . '[ ' . $aspect . '_meta' . '::' . $key . ' ][ Self' . $uc_aspect . '::' . $label . '],';
 					}
 					if($line != ''){
-							
+
 						$php .= "\t\t\t" . $line . PHP_EOL;
 					}
 				}
@@ -505,7 +515,7 @@ trait discoverability
 
 		return $php;
 	}
-	
+
 	public static function MintAspect($config, $caller)
 	{
         $filename = $config['filename'];
@@ -546,7 +556,7 @@ trait discoverability
 		// Write the file
 		file_put_contents($filename, $php);
 	}
-	
+
 	public static function MintMetadataBlock($config): string
 	{
 		$package = $config['package'];
@@ -555,7 +565,7 @@ trait discoverability
 		$php = '';
 
 		$php .= PHP_EOL . '// Discovered ' . $uc_aspect . PHP_EOL;
-		$symbols = array_merge(['_case_map', '_index_map'], $config['symbols']);
+		$symbols = $config['symbols'];
 		// $symbols = $config['symbols'];
 
 		$indices = [];
@@ -569,15 +579,20 @@ trait discoverability
 		$php .= PHP_EOL . PHP_EOL . '// Discovered ' . $uc_aspect . ' Metadata' . PHP_EOL;
 		$php .= "\t" . 'const _approach_' . $lc_aspect . '_profile_ = [' . PHP_EOL;
 
-        foreach ($config['data'] as $key => $data) {
-            if(!is_array($data)) continue;
+		// var_dump(($config['data']));
+		$meta = static::$aspect_metadata[$lc_aspect];
+        foreach ($meta as $key) {
 			$php .= "\t\t" . $package . '_' . $lc_aspect . '::' . $key . ' => [' . PHP_EOL;
-			foreach ($data as $i => $value) {
-				$prefix = '';
-				if ($key != '_case_map') {
-					$prefix = 'self::' . $symbols[$i] . ' => ';
+			foreach ($symbols as $i => $symbol) {
+				$prefix = 'self::' . $symbol . ' => ';
+				$usymbol = strtoupper($symbol);
+
+				if( key_exists($usymbol, $config['data']) || key_exists(strtolower($symbol), $config['data']) || key_exists($symbol, $config['data'])  ){
+					$data = $config['data'][$symbol][$key];
+					// foreach($config['data'][$usymbol] as $data){
+					$php .= "\t\t\t" . $prefix . var_export($data, true) . ', ' . PHP_EOL;
+					// }
 				}
-				$php .= "\t\t\t" . $prefix . var_export($value, true) . ', ' . PHP_EOL;
 			}
 			$php .= "\t\t" . '],' . PHP_EOL;
 		}

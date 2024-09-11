@@ -24,17 +24,17 @@ class ParserCest
             ],
         );
     }
-    public function checkResourcePackage(UnitTester $I): void
-    {
-        echo PHP_EOL;
-        $x=Table::get_package_name();
-        var_export($x);
-    }
+    // public function checkResourcePackage(UnitTester $I): void
+    // {
+    //     echo PHP_EOL;
+    //     $x=Table::get_package_name();
+    //     var_export($x);
+    // }
     public function checkResourceParse(UnitTester $I): void
     {
         $url = 'MariaDB://db.host/instances[rate gt 1000]/myDatabase/myTable[! price le 250 $ 5 AND id eq 1, status: active, updated: 12-31-2022][id, name].getFile()?hello=world';
         $r = Resource::parseUri($url);
-        // var_export($r);
+        var_dump($r['context']);
         $I->assertEquals($r['result']['scheme'], 'MariaDB');
     }
 }

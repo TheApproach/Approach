@@ -437,45 +437,48 @@ use \Approach\nullstate;
 		return nullstate::undeclared;
 	}
 
-	public static function getProfile($field, $what=null) // yeah?
+	public static function getProfile($which, $what=null) // yeah?
 	{
 		$info = null;
 		switch ($what) {
 			case self::label:
-				$info = static::_approach_field_profile_[self::label][static::match($field)];
+				$info = static::_approach_field_profile_[self::label][static::match($which)];
 				break;
 			case self::type:
-				$info  = static::getType($field);
+				$info  = static::getType($which);
 				break;
 			case self::default:
-				$info  = static::getDefault($field);
+				$info  = static::getDefault($which);
 				break;
 			case self::source_type:
-				$info  = static::getSourceType($field);
+				$info  = static::getSourceType($which);
 				break;
 			case self::source_default:
-				$info  = static::getSourceDefault($field);
+				$info  = static::getSourceDefault($which);
 				break;
 			case self::nullable:
-				$info  = static::isNullable($field);
+				$info  = static::isNullable($which);
 				break;
 			case self::description:
-				$info  = static::getDescription($field);
+				$info  = static::getDescription($which);
 				break;
 			case self::accessor:
-				$info  = static::isAccessor($field);
+				$info  = static::isAccessor($which);
 				break;
 			case self::reference_to:
-				$info  = static::getReferenceByAccessor($field);
+				$info  = static::getReferenceByAccessor($which);
 				break;
 			case self::primary_accessor:
 				$info  = static::getPrimaryAccessor();
 				break;
-			default:
+			case null:
 				$info = [];
 				foreach(static::getProfileProperties() as $property => $property_index){
-					$info[$property] = static::getProfile($field, $property);
+					$info[$property] = static::getProfile($which, $property);
 				}
+				break;
+			default: 
+				$info = [];
 				break;
 		}
 		return $info;

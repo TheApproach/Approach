@@ -4,4 +4,6 @@
 .idea/
 /vendor/
 .vscode/settings.json
-/support
+# most of /support is part of the repo
+# /support/test_project/Resource/MariaDB/*
+# /support/test_project
