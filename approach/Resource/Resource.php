@@ -337,6 +337,9 @@ trait user_trait
     public static function GetProfile(){ 
         return profile::GetProfile();
     }
+	public static function multi_match($which, $what){
+		return profile::multi_match($which, $what);
+	}
 	/**** User Trait ****
 	 *
 	 *  This class is used to add user functionality to an Approach Resource.
