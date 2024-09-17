@@ -50,15 +50,7 @@ const mode = 5;
 
 class Resource extends RenderNode implements Stream
 {
-    public static function GetProfile()
-    {
-        return [];
-    }
-    public static function GetSource()
-    {
-        return 'Resource';
-    }
-    // TODO: Add a Resource\context class to hold the Aspects
+    // #MAYBE TODO: Add a Resource\context class to hold the Aspects
     // Make it extend Resource, so that a context can hold bare resources but still reconfigure results
     // Then work $__approach_resource_context out of the Resource class
     private array $__approach_resource_context; // intentionally verbose to avoid collisions
@@ -120,58 +112,65 @@ class Resource extends RenderNode implements Stream
         ?callable $filter = null,
         ?string $as = null
     ): Resource|Stringable|string|nullstate {
-        $r = null;
-        $res = Resource::parseUri($where);
+		$result = nullstate::ambiguous;
+		
+        // $res = Resource::parseUri($where);
 
-        $suffix = str_replace('/', '\\', $res['url']);
-        $new_resource = \Approach\Scope::$Active->project . '\\Resource' . $suffix;
+        // $suffix = str_replace('/', '\\', $res['url']);
+        // $new_resource = \Approach\Scope::$Active->project . '\\Resource' . $suffix;
 
-        if (static::class !== self::class) {
-            $r = new static;
-        } else if (class_exists($new_resource)) {
-            $r = new $$new_resource;
-        } else {
-            $r = new Resource;
-        }
+        // if (static::class !== self::class) {
+        //     $r = new static;
+        // } else if (class_exists($new_resource)) {
+        //     $r = new $$new_resource;
+        // } else {
+        //     $r = new Resource;
+        // }
 
-        $r->__approach_resource_context = $res['context'];
+        // $r->__approach_resource_context = $res['context'];
 
 
-        echo 'Result of parsing: '.$where.PHP_EOL;
-        echo 'Picks:'. PHP_EOL;
-        var_dump($res['context'][pick]);
-        echo PHP_EOL.'Sifts:' . PHP_EOL;
-        var_dump($res['context'][sift]);
+        // echo 'Result of parsing: '.$where.PHP_EOL;
+        // echo 'Picks:'. PHP_EOL;
+        // var_dump($res['context'][pick]);
+        // echo PHP_EOL.'Sifts:' . PHP_EOL;
+        // var_dump($res['context'][sift]);
 
-        return $r;
+        return $result;
     }
 
 
-    // gen-delims  = :   /   ?   #   [   ]   @
+	// gen-delims  = :   /   ?   #   [   ]   @
+	// sub-delims  = !   $   &   ' " (   ) *  +  ,  ;  =
 
-    // sub-delims  = !   $   &   ' " (   ) *  +  ,  ;  =
+	/** 
+	 * @method sort
+	 * @param $by
+	 * @param $direction: true for ascending, false for descending
+	 */ 
 
-    public function sort(\Stringable|string|Aspect $by, bool $ascending = true)
+	public function sort(\Stringable|string|Aspect $by, bool $direction = true)
     {
-        if (!($by instanceof Aspect)) {
-            $by = new field(discover::field, content: $by);
-        }
-
-        $by[quality] = $by[quality] ?? $ascending;
-        $this->aspects[sort]->nodes[$by->label] = $by;
+        $this->aspects[sort][$by . ''] = $direction;
+		return $this;
     }
     public function weigh($siftdex, $weight = 1.0)
     {
         $this->__approach_resource_context[weigh][] = [$siftdex, $weight];
+		return $this;
     }
     public function pick(Aspect|array $by)
     {
-        $this->__approach_resource_context[pick] = array_merge($this->__approach_resource_context[pick], $by);
+        $this->__approach_resource_context[pick] = array_intersect($this->__approach_resource_context[pick], $by);
+		return $this;
     }
-    public function sift(Aspect|array $by, $qualifier = null, $weight = 1.0)
+    public function sift(Aspect|array $by, $qualifier = null, $weight = null)
     {
         $this->__approach_resource_context[sift][] = [$qualifier, ...$by];
-        $this->weigh(count($this->__approach_resource_context[sift]), $weight);
+		if($weight !== null){
+	        $this->weigh( count($this->__approach_resource_context[sift]), $weight );
+		}
+		return $this;
     }
     public function divide(Aspect|array $by)
     {
@@ -179,7 +178,7 @@ class Resource extends RenderNode implements Stream
     }
     public function filter(Aspect $by)
     {
-        $this->aspects[filter]->nodes[] = $by;
+        $this->__approach_resource_context[filter][] = $by;
     }
 
     // Use Service's Encode/Decode classes to convert $this to $type
@@ -201,6 +200,19 @@ class Resource extends RenderNode implements Stream
     {
         return \Approach\Scope::$Active->project . '\\Resource\\' . $package . '\\Aspect\\';
     }
+	public static function multi_match($which, $what)
+	{
+		return false;
+	}
+	public static function GetProfile()
+	{
+		return [];
+	}
+	
+	public static function GetSource()
+	{
+		return 'Resource';
+	}
 
     /**
      * Mint a resource class file
@@ -757,162 +769,162 @@ trait user_trait
         return $result;
     }
 
-    static function parseRange($range, &$context): array|bool
-    {
-        $range = trim($range);
+    // static function parseRange($range, &$context): array|bool
+    // {
+    //     $range = trim($range);
 
-        if (empty($range)) {
-            return false;
-        }
+    //     if (empty($range)) {
+    //         return false;
+    //     }
 
-        $parts = self::splitString($range);
-        $result = [];
+    //     $parts = self::splitString($range);
+    //     $result = [];
 
-        foreach ($parts as $part) {
-            $part = trim($part);
-            $parsedPart = self::parsePart($part, $context);
-            $result[] = $parsedPart;
-        }
+    //     foreach ($parts as $part) {
+    //         $part = trim($part);
+    //         $parsedPart = self::parsePart($part, $context);
+    //         $result[] = $parsedPart;
+    //     }
 
-        return $result;
-    }
+    //     return $result;
+    // }
 
-    static function parsePartHead($head): array|string
-    {
-        // parse ! or ^ in ! name
-        // check if self::$Operations[self::WANT_PREFIX] or self::$Operations[self::REJECT_PREFIX] is present
-        $logicalOps = [self::$Operations[self::WANT_PREFIX], self::$Operations[self::REJECT_PREFIX]];
-        foreach ($logicalOps as $op) {
-            if (($pos = strpos($head, $op)) !== false) {
-                $right = trim(substr($head, $pos + strlen($op)));
-                return [$op, $right];
-            }
-        }
+    // static function parsePartHead($head): array|string
+    // {
+    //     // parse ! or ^ in ! name
+    //     // check if self::$Operations[self::WANT_PREFIX] or self::$Operations[self::REJECT_PREFIX] is present
+    //     $logicalOps = [self::$Operations[self::WANT_PREFIX], self::$Operations[self::REJECT_PREFIX]];
+    //     foreach ($logicalOps as $op) {
+    //         if (($pos = strpos($head, $op)) !== false) {
+    //             $right = trim(substr($head, $pos + strlen($op)));
+    //             return [$op, $right];
+    //         }
+    //     }
 
-        return $head;
-    }
+    //     return $head;
+    // }
 
-    static function parsePartTail($tail): array|string
-    {
-        // check if self::$Operations[self::Need] is present
-        // if it is, it would be of form value $ 5
-        // parse the $ and 5
-        $logicalOps = [self::$Operations[self::NEED_PREFIX]];
-        foreach ($logicalOps as $op) {
-            if (($pos = strpos($tail, $op)) !== false) {
-                $left = trim(substr($tail, 0, $pos));
-                $right = trim(substr($tail, $pos + strlen($op)));
-                return [$left, $right, $op];
-            }
-        }
-        return $tail;
-    }
+    // static function parsePartTail($tail): array|string
+    // {
+    //     // check if self::$Operations[self::Need] is present
+    //     // if it is, it would be of form value $ 5
+    //     // parse the $ and 5
+    //     $logicalOps = [self::$Operations[self::NEED_PREFIX]];
+    //     foreach ($logicalOps as $op) {
+    //         if (($pos = strpos($tail, $op)) !== false) {
+    //             $left = trim(substr($tail, 0, $pos));
+    //             $right = trim(substr($tail, $pos + strlen($op)));
+    //             return [$left, $right, $op];
+    //         }
+    //     }
+    //     return $tail;
+    // }
 
-    static function parsePart($part, &$context): array
-    {
-        // Check for AND, OR, HAS
-        $logicalOps = [self::$Operations[self::_AND_], self::$Operations[self::_OR_], self::$Operations[self::_HAS_]];
-        foreach ($logicalOps as $op) {
-            if (($pos = strpos($part, $op)) !== false) {
-                $left = trim(substr($part, 0, $pos));
-                $right = trim(substr($part, $pos + strlen($op)));
-                if (self::isRange($left)) {
-                    $left = self::parseRange($left, $context);
-                }
-                if (self::isRange($right)) {
-                    $right = self::parseRange($right, $context);
-                }
+    // static function parsePart($part, &$context): array
+    // {
+    //     // Check for AND, OR, HAS
+    //     $logicalOps = [self::$Operations[self::_AND_], self::$Operations[self::_OR_], self::$Operations[self::_HAS_]];
+    //     foreach ($logicalOps as $op) {
+    //         if (($pos = strpos($part, $op)) !== false) {
+    //             $left = trim(substr($part, 0, $pos));
+    //             $right = trim(substr($part, $pos + strlen($op)));
+    //             if (self::isRange($left)) {
+    //                 $left = self::parseRange($left, $context);
+    //             }
+    //             if (self::isRange($right)) {
+    //                 $right = self::parseRange($right, $context);
+    //             }
 
-                //                $context[sift][] = [$left, $op, $right];
-                return [$left, $op, $right];
-            }
-        }
+    //             //                $context[sift][] = [$left, $op, $right];
+    //             return [$left, $op, $right];
+    //         }
+    //     }
 
-        foreach (self::$Operations as $opValue) {
-            if (($pos = strpos($part, $opValue)) !== false) {
-                $field = trim(substr($part, 0, $pos));
-                $field = self::parsePartHead($field);
-                $value = trim(substr($part, $pos + strlen($opValue)));
-                $value = self::parsePartTail($value);
-                if (!empty($field) && $value !== '') {
-                    if (is_string($value)) {
-                        $value = substr($value, 1, -1);
-                        if (self::isRange($value)) {
-                            $value = self::parseRange($value, $context);
-                        }
-                    } else {
-                        $value[0] = substr($value[0], 1, -1);
-                        if (self::isRange($value[0])) {
-                            $value = self::parseRange($value[0], $context);
-                        }
-                    }
+    //     foreach (self::$Operations as $opValue) {
+    //         if (($pos = strpos($part, $opValue)) !== false) {
+    //             $field = trim(substr($part, 0, $pos));
+    //             $field = self::parsePartHead($field);
+    //             $value = trim(substr($part, $pos + strlen($opValue)));
+    //             $value = self::parsePartTail($value);
+    //             if (!empty($field) && $value !== '') {
+    //                 if (is_string($value)) {
+    //                     $value = substr($value, 1, -1);
+    //                     if (self::isRange($value)) {
+    //                         $value = self::parseRange($value, $context);
+    //                     }
+    //                 } else {
+    //                     $value[0] = substr($value[0], 1, -1);
+    //                     if (self::isRange($value[0])) {
+    //                         $value = self::parseRange($value[0], $context);
+    //                     }
+    //                 }
 
-                    $weights = [];
+    //                 $weights = [];
 
-                    if (is_array($value)) {
-                        $weights['value'] = $value[1];
-                        $value = $value[0];
-                    }
-                    if (is_array($field)) {
-                        $weights['qualifier'] = $field[0];
-                        $field = $field[1];
-                    } else if (is_array($value)) {
-                        $weights['qualifier'] = $value[2];
-                    }
+    //                 if (is_array($value)) {
+    //                     $weights['value'] = $value[1];
+    //                     $value = $value[0];
+    //                 }
+    //                 if (is_array($field)) {
+    //                     $weights['qualifier'] = $field[0];
+    //                     $field = $field[1];
+    //                 } else if (is_array($value)) {
+    //                     $weights['qualifier'] = $value[2];
+    //                 }
 
-                    if ($weights) {
-                        $context[sift][] = [$field, $opValue, $value, 'weights' => $weights];
-                        return [$field, $opValue, $value, 'weights' => $weights];
-                    }
+    //                 if ($weights) {
+    //                     $context[sift][] = [$field, $opValue, $value, 'weights' => $weights];
+    //                     return [$field, $opValue, $value, 'weights' => $weights];
+    //                 }
 
-                    //                    $context[sift][] = [$field, $opValue, $value];
-                    return [$field, $opValue, $value];
-                }
-            }
-        }
+    //                 //                    $context[sift][] = [$field, $opValue, $value];
+    //                 return [$field, $opValue, $value];
+    //             }
+    //         }
+    //     }
 
-        //        $context[pick]->nodes[] = new Aspect(type: Aspect::container, content: $part);
-        return [$part];
-    }
+    //     //        $context[pick]->nodes[] = new Aspect(type: Aspect::container, content: $part);
+    //     return [$part];
+    // }
 
-    private static function splitString($string): array
-    {
-        $result = [];
-        $start = 0;
-        $length = strlen($string);
+    // private static function splitString($string): array
+    // {
+    //     $result = [];
+    //     $start = 0;
+    //     $length = strlen($string);
 
-        while (($pos = strpos($string, ',', $start)) !== false) {
-            $result[] = substr($string, $start, $pos - $start);
-            $start = $pos + strlen(',');
-        }
+    //     while (($pos = strpos($string, ',', $start)) !== false) {
+    //         $result[] = substr($string, $start, $pos - $start);
+    //         $start = $pos + strlen(',');
+    //     }
 
-        if ($start < $length) {
-            $result[] = substr($string, $start);
-        }
+    //     if ($start < $length) {
+    //         $result[] = substr($string, $start);
+    //     }
 
-        return $result;
-    }
+    //     return $result;
+    // }
 
-    public static function parsePath(string $path, &$context): array|string
-    {
-        $first_bracket = strpos($path, self::$Operations[self::OPEN_INDEX]);
+    // public static function parsePath(string $path, &$context): array|string
+    // {
+    //     $first_bracket = strpos($path, self::$Operations[self::OPEN_INDEX]);
 
-        $name = substr($path, 0, $first_bracket);
-        $ranges = self::extractRanges($path);
-        if ($first_bracket === false || $ranges === false) {
-            return $path;
-        }
+    //     $name = substr($path, 0, $first_bracket);
+    //     $ranges = self::extractRanges($path);
+    //     if ($first_bracket === false || $ranges === false) {
+    //         return $path;
+    //     }
 
-        $res = [];
-        $res['name'] = $name;
-        $res['ranges'] = [];
+    //     $res = [];
+    //     $res['name'] = $name;
+    //     $res['ranges'] = [];
 
-        foreach ($ranges as $range) {
-            $res['ranges'][] = self::parseRange($range, $context);
-        }
+    //     foreach ($ranges as $range) {
+    //         $res['ranges'][] = self::parseRange($range, $context);
+    //     }
 
-        return $res;
-    }
+    //     return $res;
+    // }
 
     static function isRange($path): bool
     {
@@ -951,67 +963,67 @@ trait user_trait
      * @access public
      * @static
      */
-    public static function parseUri($url): array
-    {
-        /*echo static::get_aspect_namespace() . PHP_EOL;*/
+    // public static function parseUri($url): array
+    // {
+    //     /*echo static::get_aspect_namespace() . PHP_EOL;*/
 
-        $primary = parse_url($url);
-        $res = [];
-        $context = [];
-        $context[pick] = [];
-        $context[sift] = [];
+    //     $primary = parse_url($url);
+    //     $res = [];
+    //     $context = [];
+    //     $context[pick] = [];
+    //     $context[sift] = [];
 
-        $url = '';
+    //     $url = '';
 
-        $pathCombined = $primary['path'];
+    //     $pathCombined = $primary['path'];
 
-        // function parsing
-        $last_bracket = strrpos($pathCombined, self::$Operations[self::CLOSE_INDEX]);
-        $first_dot = strpos($pathCombined, '.', $last_bracket);
-        if ($first_dot !== false) {
-            $res['function'] = substr($pathCombined, $first_dot + 1);
-        }
+    //     // function parsing
+    //     $last_bracket = strrpos($pathCombined, self::$Operations[self::CLOSE_INDEX]);
+    //     $first_dot = strpos($pathCombined, '.', $last_bracket);
+    //     if ($first_dot !== false) {
+    //         $res['function'] = substr($pathCombined, $first_dot + 1);
+    //     }
 
-        $paths = explode('/', $pathCombined);
-        $paths = array_filter($paths, function ($path) {
-            return $path !== '';
-        });
-        $res['scheme'] = $primary['scheme'] ?? '';
-        $res['host'] = $primary['host'] ?? '';
-        $res['port'] = $primary['port'] ?? '';
-        $res['queries'] = [];
+    //     $paths = explode('/', $pathCombined);
+    //     $paths = array_filter($paths, function ($path) {
+    //         return $path !== '';
+    //     });
+    //     $res['scheme'] = $primary['scheme'] ?? '';
+    //     $res['host'] = $primary['host'] ?? '';
+    //     $res['port'] = $primary['port'] ?? '';
+    //     $res['queries'] = [];
 
-        if (isset($primary['query'])) {
-            $queries = explode('&', $primary['query']);
-            foreach ($queries as $query) {
-                $parts = explode('=', $query);
-                $res['queries'][$parts[0]] = $parts[1];
-            }
-        }
+    //     if (isset($primary['query'])) {
+    //         $queries = explode('&', $primary['query']);
+    //         foreach ($queries as $query) {
+    //             $parts = explode('=', $query);
+    //             $res['queries'][$parts[0]] = $parts[1];
+    //         }
+    //     }
 
-        $res['paths'] = [];
+    //     $res['paths'] = [];
 
-        foreach ($paths as $path) {
-            $url .= '/' . self::tillFirstDelim($path);
-            $parsed = self::parsePath($path, $context);
-            $res['paths'][] = $parsed;
-            if (is_array($parsed)) {
-                foreach ($parsed['ranges'] as $p) {
-                    foreach ($p as $range) {
-                        if (count($range) == 1)
-                            $context[pick][] = $range[0];
-                        else
-                        // oh that was only temporaray for testing...it need no be like that it would be okay I think
-                        // or we can probably just decode it while decomposing
-                        // would make it easier for us
-                            $context[sift][] = json_encode($range, true);
-                    }
-                }
-            }
-        }
+    //     foreach ($paths as $path) {
+    //         $url .= '/' . self::tillFirstDelim($path);
+    //         $parsed = self::parsePath($path, $context);
+    //         $res['paths'][] = $parsed;
+    //         if (is_array($parsed)) {
+    //             foreach ($parsed['ranges'] as $p) {
+    //                 foreach ($p as $range) {
+    //                     if (count($range) == 1)
+    //                         $context[pick][] = $range[0];
+    //                     else
+    //                     // oh that was only temporaray for testing...it need no be like that it would be okay I think
+    //                     // or we can probably just decode it while decomposing
+    //                     // would make it easier for us
+    //                         $context[sift][] = json_encode($range, true);
+    //                 }
+    //             }
+    //         }
+    //     }
 
-        return ['context' => $context, 'result' => $res, 'url' => $url];
-    }
+    //     return ['context' => $context, 'result' => $res, 'url' => $url];
+    // }
 
     public static function get_package_name($package = 'Resource')
     {
